@@ -2,6 +2,14 @@
 
 Herramienta para analizar la sinergia entre tus cartas de Magic: The Gathering y un commander específico usando la API de Scryfall.
 
+## Nuevas Funcionalidades
+
+- **Sistema de Usuarios**: Cada persona tiene su propia colección privada
+- **Autenticación Segura**: Login/registro con Supabase Auth
+- **Persistencia de Resultados**: Los análisis se guardan automáticamente
+- **Filtros por Tipo**: Filtra cartas por Criaturas, Instantáneos, Artefactos, etc.
+- **Ordenamiento**: Ordena tu colección por nombre, tipo o fecha
+
 ## Requisitos
 
 - Node.js 18+ (usa el fetch nativo)

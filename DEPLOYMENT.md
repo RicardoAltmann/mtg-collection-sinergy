@@ -1,19 +1,51 @@
 # Guía de Deployment - Vercel + Supabase
 
-Esta guía te ayudará a deployar tu MTG Synergy Analyzer en Vercel usando Supabase como base de datos.
+Esta guía te ayudará a deployar tu MTG Synergy Analyzer en Vercel usando Supabase como base de datos y autenticación.
 
 ## Paso 1: Configurar Supabase
 
+### 1.1 Crear/Configurar Proyecto
 1. Ve a [supabase.com](https://supabase.com) (ya tienes cuenta)
 2. Crea un nuevo proyecto o usa uno existente
 3. Ve a **SQL Editor** en el menú lateral
 4. Copia y pega el contenido de `supabase-schema.sql`
 5. Click en "Run" para crear la tabla
-6. Ve a **Settings** → **API** y copia:
-   - `Project URL` (SUPABASE_URL)
-   - `anon public` key (SUPABASE_ANON_KEY)
+
+**IMPORTANTE**: El nuevo schema incluye soporte para usuarios. Si ya tenías datos anteriores, se perderán al ejecutar el nuevo schema.
+
+### 1.2 Copiar Credenciales
+Ve a **Settings** → **API** y copia:
+   - `Project URL` (SUPABASE_URL) - algo como `https://abcdefgh.supabase.co`
+   - `anon public` key (SUPABASE_ANON_KEY) - una clave larga que empieza con `eyJ...`
+
+### 1.3 Configurar Autenticación
+1. Ve a **Authentication** → **Providers**
+2. Asegúrate de que **Email** esté habilitado
+3. (Opcional) Desactiva "Confirm email" si quieres que los usuarios puedan registrarse sin confirmar email
 
 ## Paso 2: Deploy en Vercel
+
+### 2.1 Configurar Frontend con Credenciales
+
+**ANTES de deployar en Vercel**, debes configurar las credenciales en `index.html`:
+
+1. Abre `index.html` en tu editor
+2. Busca estas líneas (cerca de la línea 710):
+   ```javascript
+   const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+   const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+   ```
+3. Reemplaza con tus credenciales de Supabase:
+   ```javascript
+   const SUPABASE_URL = 'https://tuproyecto.supabase.co';
+   const SUPABASE_ANON_KEY = 'eyJ...tu-clave-aqui...';
+   ```
+4. Guarda el archivo y haz commit:
+   ```bash
+   git add index.html
+   git commit -m "Configurar credenciales de Supabase"
+   git push
+   ```
 
 ### Opción A: Desde la Web (Más fácil)
 
@@ -26,7 +58,7 @@ Esta guía te ayudará a deployar tu MTG Synergy Analyzer en Vercel usando Supab
    - **Build Command**: (dejar vacío)
    - **Output Directory**: (dejar vacío)
 
-5. **Variables de Entorno** (expandir sección):
+5. **Variables de Entorno** (expandir sección - SOLO PARA BACKEND):
    ```
    SUPABASE_URL = tu_project_url_de_supabase
    SUPABASE_ANON_KEY = tu_anon_key_de_supabase
