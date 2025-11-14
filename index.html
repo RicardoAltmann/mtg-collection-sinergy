@@ -316,6 +316,195 @@
             margin: 20px 0;
             color: #2ecc71;
         }
+
+        /* Filters */
+        .filters {
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .filter-group {
+            margin-bottom: 15px;
+        }
+
+        .filter-group label {
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            background: rgba(0,0,0,0.3);
+            border: 2px solid rgba(255,255,255,0.2);
+            color: #95a5a6;
+            border-radius: 6px;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            border-color: #f39c12;
+            transform: translateY(-1px);
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            color: white;
+            border-color: #f39c12;
+        }
+
+        .sort-select {
+            padding: 10px 15px;
+            background: rgba(0,0,0,0.3);
+            border: 2px solid rgba(255,255,255,0.2);
+            color: #e4e4e4;
+            border-radius: 8px;
+            font-size: 0.9em;
+            cursor: pointer;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .sort-select:focus {
+            outline: none;
+            border-color: #f39c12;
+        }
+
+        /* Collapsible sections */
+        .collapsible-section {
+            margin: 20px 0;
+        }
+
+        .collapsible-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .collapsible-header:hover {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.1);
+        }
+
+        .collapsible-header h2 {
+            margin: 0;
+            font-size: 1.3em;
+        }
+
+        .collapsible-toggle {
+            font-size: 1.5em;
+            transition: transform 0.2s;
+        }
+
+        .collapsible-toggle.open {
+            transform: rotate(180deg);
+        }
+
+        .collapsible-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .collapsible-content.open {
+            max-height: 10000px;
+            transition: max-height 0.5s ease-in;
+        }
+
+        /* Improved card items */
+        .card-item {
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #f39c12;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .card-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 20px rgba(243, 156, 18, 0.2);
+            background: rgba(255,255,255,0.08);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .card-info {
+            flex: 1;
+        }
+
+        .card-badge {
+            background: rgba(0,0,0,0.3);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            color: #95a5a6;
+            margin-top: 5px;
+            display: inline-block;
+        }
+
+        /* Better spacing for synergy list */
+        .synergy-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        /* Stats improvements */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-box {
+            background: rgba(0,0,0,0.3);
+            padding: 20px 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.2s;
+        }
+
+        .stat-box:hover {
+            transform: translateY(-2px);
+            border-color: #f39c12;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #95a5a6;
+        }
+
+        .empty-state-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
     </style>
 </head>
 <body>
@@ -355,6 +544,14 @@
                 </div>
                 <div class="input-group">
                     <input type="text" id="searchCollection" placeholder="Buscar en tu colección..." onkeyup="filterCollection()">
+                </div>
+                <div class="filter-group">
+                    <label>Ordenar por:</label>
+                    <select id="sortCollection" class="sort-select" onchange="filterCollection()">
+                        <option value="name">Nombre (A-Z)</option>
+                        <option value="type">Tipo de carta</option>
+                        <option value="date">Agregadas recientemente</option>
+                    </select>
                 </div>
             </div>
             <div id="collectionList"></div>
@@ -464,10 +661,27 @@
         // Filter collection
         function filterCollection() {
             const searchTerm = document.getElementById('searchCollection').value.toLowerCase();
-            const filtered = allCollectionData.filter(card =>
+            const sortBy = document.getElementById('sortCollection')?.value || 'name';
+
+            let filtered = allCollectionData.filter(card =>
                 card.name.toLowerCase().includes(searchTerm) ||
                 card.type_line.toLowerCase().includes(searchTerm)
             );
+
+            // Sort
+            filtered.sort((a, b) => {
+                switch(sortBy) {
+                    case 'name':
+                        return a.name.localeCompare(b.name);
+                    case 'type':
+                        return a.type_line.localeCompare(b.type_line);
+                    case 'date':
+                        return 0; // Keep original order (most recent first in Supabase)
+                    default:
+                        return 0;
+                }
+            });
+
             displayCollection(filtered);
         }
 
@@ -758,13 +972,21 @@
             return commonTypes.filter(type => typeString.includes(type));
         }
 
+        // Store all synergies for filtering
+        let allSynergies = [];
+        let activeTypeFilter = 'all';
+
         function displayResults(synergies, errors) {
+            allSynergies = synergies;
             const resultsDiv = document.getElementById('results');
-            
+
             const highSynergy = synergies.filter(s => s.score >= 20);
             const mediumSynergy = synergies.filter(s => s.score >= 5 && s.score < 20);
             const lowSynergy = synergies.filter(s => s.score < 5 && s.score >= 0);
             const outOfColor = synergies.filter(s => s.score < 0);
+
+            // Get unique card types
+            const cardTypes = getCardTypes(synergies);
 
             let html = `
                 <div class="commander-info">
@@ -801,6 +1023,40 @@
 
             html += '</div>';
 
+            // Filters
+            html += `
+                <div class="filters">
+                    <div class="filter-group">
+                        <label>Filtrar por tipo de carta:</label>
+                        <div class="filter-buttons">
+                            <button class="filter-btn ${activeTypeFilter === 'all' ? 'active' : ''}" onclick="filterByType('all')">
+                                Todas (${synergies.length})
+                            </button>
+                            ${cardTypes.map(type => `
+                                <button class="filter-btn ${activeTypeFilter === type.key ? 'active' : ''}" onclick="filterByType('${type.key}')">
+                                    ${type.name} (${type.count})
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            html += '<div id="filteredResults">';
+            html += renderFilteredResults(synergies);
+            html += '</div>';
+
+            resultsDiv.innerHTML = html;
+        }
+
+        function renderFilteredResults(synergies) {
+            const highSynergy = synergies.filter(s => s.score >= 20);
+            const mediumSynergy = synergies.filter(s => s.score >= 5 && s.score < 20);
+            const lowSynergy = synergies.filter(s => s.score < 5 && s.score >= 0);
+            const outOfColor = synergies.filter(s => s.score < 0);
+
+            let html = '';
+
             if (highSynergy.length > 0) {
                 html += '<h2 style="color: #27ae60; margin: 20px 0;">🔥 Alta Sinergia</h2>';
                 html += '<div class="synergy-list">';
@@ -819,37 +1075,167 @@
                 html += '</div>';
             }
 
+            // Collapsible for low synergy (collapsed by default)
             if (lowSynergy.length > 0) {
-                html += '<h2 style="color: #95a5a6; margin: 20px 0;">📝 Baja Sinergia</h2>';
-                html += '<div class="synergy-list">';
+                html += `
+                    <div class="collapsible-section">
+                        <div class="collapsible-header" onclick="toggleCollapse('lowSynergy')">
+                            <h2 style="color: #95a5a6;">📝 Baja Sinergia (${lowSynergy.length})</h2>
+                            <span class="collapsible-toggle" id="lowSynergy-toggle">▼</span>
+                        </div>
+                        <div class="collapsible-content" id="lowSynergy-content">
+                            <div class="synergy-list" style="margin-top: 15px;">
+                `;
                 lowSynergy.forEach(item => {
                     html += createCardHTML(item);
                 });
-                html += '</div>';
+                html += `
+                            </div>
+                        </div>
+                    </div>
+                `;
             }
 
+            // Collapsible for out of color (collapsed by default)
             if (outOfColor.length > 0) {
-                html += '<h2 style="color: #e74c3c; margin: 20px 0;">🚫 Fuera de Identidad de Color</h2>';
-                html += '<div class="synergy-list">';
+                html += `
+                    <div class="collapsible-section">
+                        <div class="collapsible-header" onclick="toggleCollapse('outOfColor')">
+                            <h2 style="color: #e74c3c;">🚫 Fuera de Identidad de Color (${outOfColor.length})</h2>
+                            <span class="collapsible-toggle" id="outOfColor-toggle">▼</span>
+                        </div>
+                        <div class="collapsible-content" id="outOfColor-content">
+                            <div class="synergy-list" style="margin-top: 15px;">
+                `;
                 outOfColor.forEach(item => {
                     html += createCardHTML(item);
                 });
-                html += '</div>';
+                html += `
+                            </div>
+                        </div>
+                    </div>
+                `;
             }
 
-            resultsDiv.innerHTML = html;
+            if (synergies.length === 0) {
+                html += `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔍</div>
+                        <p>No se encontraron cartas con este filtro</p>
+                    </div>
+                `;
+            }
+
+            return html;
+        }
+
+        function getCardTypes(synergies) {
+            const typeCounts = {};
+
+            synergies.forEach(item => {
+                const typeLine = item.card.type_line.toLowerCase();
+
+                if (typeLine.includes('creature')) {
+                    typeCounts['creature'] = (typeCounts['creature'] || 0) + 1;
+                }
+                if (typeLine.includes('instant')) {
+                    typeCounts['instant'] = (typeCounts['instant'] || 0) + 1;
+                }
+                if (typeLine.includes('sorcery')) {
+                    typeCounts['sorcery'] = (typeCounts['sorcery'] || 0) + 1;
+                }
+                if (typeLine.includes('artifact')) {
+                    typeCounts['artifact'] = (typeCounts['artifact'] || 0) + 1;
+                }
+                if (typeLine.includes('enchantment')) {
+                    typeCounts['enchantment'] = (typeCounts['enchantment'] || 0) + 1;
+                }
+                if (typeLine.includes('planeswalker')) {
+                    typeCounts['planeswalker'] = (typeCounts['planeswalker'] || 0) + 1;
+                }
+                if (typeLine.includes('land')) {
+                    typeCounts['land'] = (typeCounts['land'] || 0) + 1;
+                }
+            });
+
+            const typeNames = {
+                'creature': 'Criaturas',
+                'instant': 'Instantáneos',
+                'sorcery': 'Conjuros',
+                'artifact': 'Artefactos',
+                'enchantment': 'Encantamientos',
+                'planeswalker': 'Planeswalkers',
+                'land': 'Tierras'
+            };
+
+            return Object.entries(typeCounts)
+                .map(([key, count]) => ({ key, name: typeNames[key], count }))
+                .sort((a, b) => b.count - a.count);
+        }
+
+        function filterByType(type) {
+            activeTypeFilter = type;
+
+            let filtered = allSynergies;
+
+            if (type !== 'all') {
+                filtered = allSynergies.filter(item => {
+                    const typeLine = item.card.type_line.toLowerCase();
+                    return typeLine.includes(type);
+                });
+            }
+
+            const filteredDiv = document.getElementById('filteredResults');
+            if (filteredDiv) {
+                filteredDiv.innerHTML = renderFilteredResults(filtered);
+            }
+
+            // Update filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+
+        function toggleCollapse(id) {
+            const content = document.getElementById(id + '-content');
+            const toggle = document.getElementById(id + '-toggle');
+
+            if (content.classList.contains('open')) {
+                content.classList.remove('open');
+                toggle.classList.remove('open');
+            } else {
+                content.classList.add('open');
+                toggle.classList.add('open');
+            }
         }
 
         function createCardHTML(item) {
-            const reasonsList = item.reasons.length > 0 
+            const reasonsList = item.reasons.length > 0
                 ? '<ul class="synergy-reasons">' + item.reasons.map(r => `<li>${r}</li>`).join('') + '</ul>'
                 : '<p style="color: #7f8c8d;">Sin sinergia específica detectada</p>';
 
+            // Extract main card type for badge
+            const typeLine = item.card.type_line.toLowerCase();
+            let mainType = '';
+            if (typeLine.includes('creature')) mainType = 'Criatura';
+            else if (typeLine.includes('instant')) mainType = 'Instantáneo';
+            else if (typeLine.includes('sorcery')) mainType = 'Conjuro';
+            else if (typeLine.includes('artifact')) mainType = 'Artefacto';
+            else if (typeLine.includes('enchantment')) mainType = 'Encantamiento';
+            else if (typeLine.includes('planeswalker')) mainType = 'Planeswalker';
+            else if (typeLine.includes('land')) mainType = 'Tierra';
+
             return `
                 <div class="card-item">
-                    <div class="card-name">${item.card.name}</div>
-                    <div class="card-type">${item.card.type_line}</div>
-                    <span class="synergy-score">Puntaje: ${item.score}</span>
+                    <div class="card-header">
+                        <div class="card-info">
+                            <div class="card-name">${item.card.name}</div>
+                            <div class="card-type">${item.card.type_line}</div>
+                            ${mainType ? `<span class="card-badge">${mainType}</span>` : ''}
+                        </div>
+                        <span class="synergy-score">Puntaje: ${item.score}</span>
+                    </div>
                     ${reasonsList}
                 </div>
             `;
