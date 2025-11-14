@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MTG Synergy Analyzer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e4e4e4;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #f39c12;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .input-section {
+            background: rgba(255,255,255,0.05);
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #f39c12;
+        }
+        
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.3);
+            color: #e4e4e4;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: #f39c12;
+        }
+        
+        textarea {
+            min-height: 150px;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(243, 156, 18, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 30px;
+            font-size: 18px;
+            color: #f39c12;
+        }
+        
+        .error {
+            background: rgba(231, 76, 60, 0.2);
+            border: 2px solid #e74c3c;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            color: #ff6b6b;
+        }
+        
+        .results {
+            margin-top: 30px;
+        }
+        
+        .commander-info {
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.2) 0%, rgba(41, 128, 185, 0.2) 100%);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border: 2px solid rgba(52, 152, 219, 0.5);
+        }
+        
+        .commander-info h2 {
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+        
+        .synergy-list {
+            display: grid;
+            gap: 20px;
+        }
+        
+        .card-item {
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #f39c12;
+            backdrop-filter: blur(10px);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .card-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 20px rgba(243, 156, 18, 0.3);
+        }
+        
+        .card-name {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #f39c12;
+            margin-bottom: 8px;
+        }
+        
+        .card-type {
+            color: #95a5a6;
+            font-size: 0.9em;
+            margin-bottom: 12px;
+        }
+        
+        .synergy-score {
+            display: inline-block;
+            padding: 6px 14px;
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            border-radius: 20px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            font-size: 0.9em;
+        }
+        
+        .synergy-reasons {
+            margin-top: 12px;
+            padding-left: 20px;
+        }
+        
+        .synergy-reasons li {
+            margin: 6px 0;
+            color: #bdc3c7;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-box {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: 700;
+            color: #f39c12;
+        }
+        
+        .stat-label {
+            color: #95a5a6;
+            margin-top: 5px;
+        }
+        
+        .help-text {
+            color: #95a5a6;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .progress {
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+
+        .progress-bar {
+            height: 20px;
+            background: linear-gradient(90deg, #f39c12, #e67e22);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎴 MTG Synergy Analyzer</h1>
+        
+        <div class="input-section">
+            <div class="input-group">
+                <label for="commander">Commander (nombre exacto):</label>
+                <input type="text" id="commander" placeholder="Ej: Atraxa, Praetors' Voice">
+                <p class="help-text">Escribe el nombre exacto del commander en inglés</p>
+            </div>
+            
+            <div class="input-group">
+                <label for="cardList">Tu colección (una carta por línea):</label>
+                <textarea id="cardList" placeholder="Sol Ring&#10;Lightning Bolt&#10;Counterspell&#10;..."></textarea>
+                <p class="help-text">Pega los nombres de tus cartas, una por línea</p>
+            </div>
+            
+            <button onclick="analyzesynergy()" id="analyzeBtn">Analizar Sinergia</button>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000';
+        let commanderData = null;
+        let cardCollection = [];
+
+        async function fetchCardData(cardName) {
+            const response = await fetch(`${API_URL}/api/card/${encodeURIComponent(cardName)}`);
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || `No se encontró: ${cardName}`);
+            }
+            return await response.json();
+        }
+
+        async function fetchCardsBatch(cardNames) {
+            const response = await fetch(`${API_URL}/api/cards/batch`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ cardNames })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Error al buscar cartas');
+            }
+            
+            return await response.json();
+        }
+
+        async function analyzesynergy() {
+            const commanderName = document.getElementById('commander').value.trim();
+            const cardListText = document.getElementById('cardList').value.trim();
+            const resultsDiv = document.getElementById('results');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+
+            if (!commanderName || !cardListText) {
+                resultsDiv.innerHTML = '<div class="error">Por favor completa ambos campos</div>';
+                return;
+            }
+
+            analyzeBtn.disabled = true;
+            resultsDiv.innerHTML = '<div class="loading">🔍 Buscando commander...</div>';
+
+            try {
+                // Fetch commander data
+                commanderData = await fetchCardData(commanderName);
+                
+                // Parse card list
+                const cardNames = cardListText.split('\n')
+                    .map(name => name.trim())
+                    .filter(name => name.length > 0);
+
+                resultsDiv.innerHTML = `
+                    <div class="loading">
+                        🔍 Analizando ${cardNames.length} cartas...
+                        <div class="progress">
+                            <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                `;
+
+                // Fetch all cards in batch
+                const batchResult = await fetchCardsBatch(cardNames);
+                cardCollection = batchResult.results;
+
+                if (batchResult.errors.length > 0) {
+                    console.warn('Cartas no encontradas:', batchResult.errors);
+                }
+
+                // Analyze synergies
+                const synergies = calculateSynergies();
+                displayResults(synergies, batchResult.errors);
+
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            } finally {
+                analyzeBtn.disabled = false;
+            }
+        }
+
+        function calculateSynergies() {
+            const commanderColors = commanderData.color_identity || [];
+            const commanderText = (commanderData.oracle_text || '').toLowerCase();
+            const commanderTypes = (commanderData.type_line || '').toLowerCase();
+            const commanderKeywords = commanderData.keywords || [];
+
+            return cardCollection.map(card => {
+                const reasons = [];
+                let score = 0;
+
+                // Color identity match
+                const cardColors = card.color_identity || [];
+                const colorMatch = cardColors.every(color => commanderColors.includes(color));
+                if (!colorMatch) {
+                    score -= 50;
+                    reasons.push('❌ Fuera de identidad de color');
+                }
+
+                const cardText = (card.oracle_text || '').toLowerCase();
+                const cardTypes = (card.type_line || '').toLowerCase();
+
+                // Keyword synergies
+                commanderKeywords.forEach(keyword => {
+                    if (cardText.includes(keyword.toLowerCase())) {
+                        score += 15;
+                        reasons.push(`✓ Comparte keyword: ${keyword}`);
+                    }
+                });
+
+                // +1/+1 counter synergy
+                if (commanderText.includes('+1/+1 counter') || commanderText.includes('proliferate')) {
+                    if (cardText.includes('+1/+1 counter') || cardText.includes('proliferate')) {
+                        score += 20;
+                        reasons.push('✓ Sinergia de contadores +1/+1');
+                    }
+                }
+
+                // Tribal synergies
+                const commanderCreatureTypes = extractCreatureTypes(commanderTypes);
+                const cardCreatureTypes = extractCreatureTypes(cardTypes);
+                commanderCreatureTypes.forEach(type => {
+                    if (cardText.includes(type) || cardCreatureTypes.includes(type)) {
+                        score += 15;
+                        reasons.push(`✓ Sinergia tribal: ${type}`);
+                    }
+                });
+
+                // Card draw synergy
+                if (commanderText.includes('draw') && cardText.includes('draw')) {
+                    score += 10;
+                    reasons.push('✓ Ambas cartas roban cartas');
+                }
+
+                // Ramp synergy
+                if ((commanderText.includes('land') || commanderTypes.includes('land')) && 
+                    (cardText.includes('search') && cardText.includes('land'))) {
+                    score += 12;
+                    reasons.push('✓ Rampeo de tierras');
+                }
+
+                // Sacrifice synergy
+                if (commanderText.includes('sacrifice') && cardText.includes('sacrifice')) {
+                    score += 12;
+                    reasons.push('✓ Sinergia de sacrificio');
+                }
+
+                // ETB synergy
+                if (commanderText.includes('enters the battlefield') && cardText.includes('enters the battlefield')) {
+                    score += 10;
+                    reasons.push('✓ Sinergia ETB');
+                }
+
+                // Graveyard synergy
+                if ((commanderText.includes('graveyard') || commanderText.includes('return') && commanderText.includes('battlefield')) &&
+                    (cardText.includes('graveyard') || cardText.includes('return') && cardText.includes('battlefield'))) {
+                    score += 12;
+                    reasons.push('✓ Sinergia de cementerio');
+                }
+
+                // Token synergy
+                if (commanderText.includes('token') && cardText.includes('token')) {
+                    score += 10;
+                    reasons.push('✓ Sinergia de tokens');
+                }
+
+                // Removal/Protection
+                if (cardText.includes('destroy') || cardText.includes('exile') || cardText.includes('counter') || 
+                    cardText.includes('protection') || cardText.includes('indestructible')) {
+                    score += 5;
+                    reasons.push('✓ Remoción o protección');
+                }
+
+                // Staples get bonus points
+                const staples = ['sol ring', 'arcane signet', 'command tower', 'path to exile', 
+                                'swords to plowshares', 'counterspell', 'lightning bolt'];
+                if (staples.includes(card.name.toLowerCase())) {
+                    score += 15;
+                    reasons.push('✓ Staple de formato');
+                }
+
+                return {
+                    card: card,
+                    score: score,
+                    reasons: reasons
+                };
+            }).sort((a, b) => b.score - a.score);
+        }
+
+        function extractCreatureTypes(typeString) {
+            const commonTypes = ['human', 'elf', 'goblin', 'zombie', 'angel', 'demon', 'dragon', 
+                                'wizard', 'warrior', 'knight', 'soldier', 'vampire', 'werewolf',
+                                'merfolk', 'elemental', 'beast', 'spirit', 'artifact', 'enchantment'];
+            return commonTypes.filter(type => typeString.includes(type));
+        }
+
+        function displayResults(synergies, errors) {
+            const resultsDiv = document.getElementById('results');
+            
+            const highSynergy = synergies.filter(s => s.score >= 20);
+            const mediumSynergy = synergies.filter(s => s.score >= 5 && s.score < 20);
+            const lowSynergy = synergies.filter(s => s.score < 5 && s.score >= 0);
+            const outOfColor = synergies.filter(s => s.score < 0);
+
+            let html = `
+                <div class="commander-info">
+                    <h2>${commanderData.name}</h2>
+                    <p class="card-type">${commanderData.type_line}</p>
+                    <p style="margin-top: 10px; color: #bdc3c7;">${commanderData.oracle_text || ''}</p>
+                    <div class="stats">
+                        <div class="stat-box">
+                            <div class="stat-value">${highSynergy.length}</div>
+                            <div class="stat-label">Alta Sinergia</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">${mediumSynergy.length}</div>
+                            <div class="stat-label">Media Sinergia</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">${lowSynergy.length}</div>
+                            <div class="stat-label">Baja Sinergia</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">${outOfColor.length}</div>
+                            <div class="stat-label">Fuera de Color</div>
+                        </div>
+                    </div>
+            `;
+
+            if (errors.length > 0) {
+                html += `
+                    <div style="margin-top: 15px; padding: 10px; background: rgba(231, 76, 60, 0.1); border-radius: 8px;">
+                        <strong>⚠️ Cartas no encontradas:</strong> ${errors.join(', ')}
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+
+            if (highSynergy.length > 0) {
+                html += '<h2 style="color: #27ae60; margin: 20px 0;">🔥 Alta Sinergia</h2>';
+                html += '<div class="synergy-list">';
+                highSynergy.forEach(item => {
+                    html += createCardHTML(item);
+                });
+                html += '</div>';
+            }
+
+            if (mediumSynergy.length > 0) {
+                html += '<h2 style="color: #f39c12; margin: 20px 0;">⚡ Media Sinergia</h2>';
+                html += '<div class="synergy-list">';
+                mediumSynergy.forEach(item => {
+                    html += createCardHTML(item);
+                });
+                html += '</div>';
+            }
+
+            if (lowSynergy.length > 0) {
+                html += '<h2 style="color: #95a5a6; margin: 20px 0;">📝 Baja Sinergia</h2>';
+                html += '<div class="synergy-list">';
+                lowSynergy.forEach(item => {
+                    html += createCardHTML(item);
+                });
+                html += '</div>';
+            }
+
+            if (outOfColor.length > 0) {
+                html += '<h2 style="color: #e74c3c; margin: 20px 0;">🚫 Fuera de Identidad de Color</h2>';
+                html += '<div class="synergy-list">';
+                outOfColor.forEach(item => {
+                    html += createCardHTML(item);
+                });
+                html += '</div>';
+            }
+
+            resultsDiv.innerHTML = html;
+        }
+
+        function createCardHTML(item) {
+            const reasonsList = item.reasons.length > 0 
+                ? '<ul class="synergy-reasons">' + item.reasons.map(r => `<li>${r}</li>`).join('') + '</ul>'
+                : '<p style="color: #7f8c8d;">Sin sinergia específica detectada</p>';
+
+            return `
+                <div class="card-item">
+                    <div class="card-name">${item.card.name}</div>
+                    <div class="card-type">${item.card.type_line}</div>
+                    <span class="synergy-score">Puntaje: ${item.score}</span>
+                    ${reasonsList}
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
