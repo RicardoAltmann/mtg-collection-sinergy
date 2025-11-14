@@ -1,2 +1,4 @@
 node_modules/
 collection.json
+.env
+.vercel
