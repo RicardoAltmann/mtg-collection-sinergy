@@ -3,19 +3,26 @@ import cors from 'cors';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createClient } from '@supabase/supabase-js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const SCRYFALL_API = 'https://api.scryfall.com';
 const COLLECTION_FILE = path.join(__dirname, 'collection.json');
+
+// Initialize Supabase (only if credentials are provided)
+const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY
+    ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY)
+    : null;
+
+const USE_SUPABASE = !!supabase;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
 
 // Rate limiting for Scryfall API
 let lastRequestTime = 0;
@@ -35,20 +42,83 @@ async function rateLimitedFetch(url) {
     return fetch(url);
 }
 
-// Load collection from file
+// Collection storage functions - work with both Supabase and local file
 async function loadCollection() {
-    try {
-        const data = await fs.readFile(COLLECTION_FILE, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-        // If file doesn't exist, return empty collection
-        return [];
+    if (USE_SUPABASE) {
+        const { data, error } = await supabase
+            .from('cards')
+            .select('card_data')
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+        return data.map(row => row.card_data);
+    } else {
+        try {
+            const data = await fs.readFile(COLLECTION_FILE, 'utf-8');
+            return JSON.parse(data);
+        } catch (error) {
+            return [];
+        }
     }
 }
 
-// Save collection to file
 async function saveCollection(collection) {
-    await fs.writeFile(COLLECTION_FILE, JSON.stringify(collection, null, 2));
+    if (USE_SUPABASE) {
+        // Clear existing and insert new
+        await supabase.from('cards').delete().neq('id', 0); // Delete all
+
+        const rows = collection.map(card => ({
+            card_data: card
+        }));
+
+        const { error } = await supabase.from('cards').insert(rows);
+        if (error) throw error;
+    } else {
+        await fs.writeFile(COLLECTION_FILE, JSON.stringify(collection, null, 2));
+    }
+}
+
+async function addCardToCollection(cardData) {
+    if (USE_SUPABASE) {
+        const { error } = await supabase
+            .from('cards')
+            .insert([{ card_data: cardData }]);
+
+        if (error) throw error;
+    } else {
+        const collection = await loadCollection();
+        collection.push(cardData);
+        await saveCollection(collection);
+    }
+}
+
+async function removeCardFromCollection(cardName) {
+    if (USE_SUPABASE) {
+        // Find and delete the card
+        const collection = await loadCollection();
+        const filtered = collection.filter(card =>
+            card.name.toLowerCase() !== cardName.toLowerCase()
+        );
+
+        if (filtered.length === collection.length) {
+            return false; // Card not found
+        }
+
+        await saveCollection(filtered);
+        return true;
+    } else {
+        const collection = await loadCollection();
+        const filtered = collection.filter(card =>
+            card.name.toLowerCase() !== cardName.toLowerCase()
+        );
+
+        if (filtered.length === collection.length) {
+            return false;
+        }
+
+        await saveCollection(filtered);
+        return true;
+    }
 }
 
 // API Routes
@@ -149,7 +219,7 @@ app.post('/api/collection', async (req, res) => {
 
                 if (response.ok) {
                     const data = await response.json();
-                    collection.push(data);
+                    await addCardToCollection(data);
                     results.push(data.name);
                 } else {
                     errors.push(cardName);
@@ -159,13 +229,13 @@ app.post('/api/collection', async (req, res) => {
             }
         }
 
-        await saveCollection(collection);
+        const updatedCollection = await loadCollection();
 
         res.json({
             added: results,
             errors,
             skipped,
-            totalInCollection: collection.length
+            totalInCollection: updatedCollection.length
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -175,22 +245,18 @@ app.post('/api/collection', async (req, res) => {
 // Remove a card from collection
 app.delete('/api/collection/:name', async (req, res) => {
     try {
-        const cardName = req.params.name.toLowerCase();
-        const collection = await loadCollection();
+        const cardName = req.params.name;
+        const removed = await removeCardFromCollection(cardName);
 
-        const filteredCollection = collection.filter(card =>
-            card.name.toLowerCase() !== cardName
-        );
-
-        if (filteredCollection.length === collection.length) {
+        if (!removed) {
             return res.status(404).json({ error: 'Card not found in collection' });
         }
 
-        await saveCollection(filteredCollection);
+        const collection = await loadCollection();
 
         res.json({
             message: 'Card removed successfully',
-            totalInCollection: filteredCollection.length
+            totalInCollection: collection.length
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -212,8 +278,16 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Start server
-app.listen(PORT, () => {
-    console.log(`🎴 MTG Synergy Analyzer running on http://localhost:${PORT}`);
-    console.log(`📊 Collection file: ${COLLECTION_FILE}`);
-});
+// Export for Vercel serverless
+export default app;
+
+// Start server only if not in Vercel
+if (!process.env.VERCEL) {
+    app.listen(PORT, () => {
+        console.log(`🎴 MTG Synergy Analyzer running on http://localhost:${PORT}`);
+        console.log(`📊 Storage: ${USE_SUPABASE ? 'Supabase' : 'Local file'}`);
+        if (!USE_SUPABASE) {
+            console.log(`📁 Collection file: ${COLLECTION_FILE}`);
+        }
+    });
+}
