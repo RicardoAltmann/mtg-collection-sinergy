@@ -1303,6 +1303,12 @@
                     </details>
                 </div>
             `);
+
+            // Show onboarding modal for first-time users in demo mode
+            const onboardingKey = 'onboarding_seen';
+            if (!localStorage.getItem(onboardingKey)) {
+                showOnboarding();
+            }
         }
 
         // Use current host for API calls (works both locally and in production)
@@ -1375,6 +1381,10 @@
                 }
             }
         }
+
+        // Make functions globally accessible
+        window.showOnboarding = showOnboarding;
+        window.closeOnboarding = closeOnboarding;
 
         function showAuthForms() {
             document.getElementById('authContainer').classList.remove('hidden');
