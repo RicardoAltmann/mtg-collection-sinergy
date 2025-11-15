@@ -14,11 +14,32 @@ Herramienta para analizar la sinergia entre tus cartas de Magic: The Gathering y
 
 - Node.js 18+ (usa el fetch nativo)
 - npm
+- Cuenta de Supabase (gratuita)
 
 ## Instalación
 
-1. Abre una terminal en esta carpeta
-2. Instala las dependencias:
+### 1. Configurar Variables de Entorno
+
+Crea un archivo `.env` en la raíz del proyecto con tus credenciales de Supabase:
+
+```bash
+SUPABASE_URL=https://tu-proyecto.supabase.co
+SUPABASE_ANON_KEY=tu-clave-anonima
+```
+
+### 2. Configurar Base de Datos en Supabase
+
+**⚠️ IMPORTANTE**: Debes configurar la base de datos ANTES de iniciar la aplicación.
+
+1. Ve a tu proyecto en https://app.supabase.com
+2. Abre **SQL Editor** (barra lateral izquierda)
+3. Crea una nueva consulta y pega el contenido completo de `supabase-schema.sql`
+4. Ejecuta la consulta (Run o Ctrl+Enter)
+
+**¿Obtienes el error "column user_id does not exist"?**
+→ Ver [QUICKFIX.md](./QUICKFIX.md) para solución rápida
+
+### 3. Instalar Dependencias
 
 ```bash
 npm install
