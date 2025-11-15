@@ -1210,10 +1210,6 @@
             font-size: 0.9em;
         }
 
-        .hidden {
-            display: none;
-        }
-
         /* Onboarding Modal */
         .modal-overlay {
             position: fixed;
@@ -1742,6 +1738,11 @@
                 padding: var(--space-md) var(--space-xl);
                 font-size: var(--font-size-base);
             }
+        }
+
+        /* Utility Classes - Must be last to override other styles */
+        .hidden {
+            display: none !important;
         }
     </style>
 </head>
