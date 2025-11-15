@@ -24,6 +24,24 @@ const USE_SUPABASE = !!supabase;
 app.use(cors());
 app.use(express.json());
 
+// Middleware to create authenticated Supabase client per request
+function getSupabaseClient(req) {
+    if (!USE_SUPABASE) return null;
+
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+        return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
+            global: {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        });
+    }
+    return supabase; // Return default client for unauthenticated requests
+}
+
 // Rate limiting for Scryfall API
 let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL = 100; // 100ms between requests
@@ -43,15 +61,15 @@ async function rateLimitedFetch(url) {
 }
 
 // Collection storage functions - work with both Supabase and local file
-async function loadCollection() {
-    if (USE_SUPABASE) {
-        const { data, error } = await supabase
+async function loadCollection(supabaseClient) {
+    if (USE_SUPABASE && supabaseClient) {
+        const { data, error } = await supabaseClient
             .from('cards')
             .select('card_data')
             .order('created_at', { ascending: true });
 
         if (error) throw error;
-        return data.map(row => row.card_data);
+        return data ? data.map(row => row.card_data) : [];
     } else {
         try {
             const data = await fs.readFile(COLLECTION_FILE, 'utf-8');
@@ -62,40 +80,53 @@ async function loadCollection() {
     }
 }
 
-async function saveCollection(collection) {
-    if (USE_SUPABASE) {
+async function saveCollection(supabaseClient, collection) {
+    if (USE_SUPABASE && supabaseClient) {
+        // Get current user
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
         // Clear existing and insert new
-        await supabase.from('cards').delete().neq('id', 0); // Delete all
+        await supabaseClient.from('cards').delete().eq('user_id', user.id);
 
-        const rows = collection.map(card => ({
-            card_data: card
-        }));
+        if (collection.length > 0) {
+            const rows = collection.map(card => ({
+                user_id: user.id,
+                card_data: card
+            }));
 
-        const { error } = await supabase.from('cards').insert(rows);
-        if (error) throw error;
+            const { error } = await supabaseClient.from('cards').insert(rows);
+            if (error) throw error;
+        }
     } else {
         await fs.writeFile(COLLECTION_FILE, JSON.stringify(collection, null, 2));
     }
 }
 
-async function addCardToCollection(cardData) {
-    if (USE_SUPABASE) {
-        const { error } = await supabase
+async function addCardToCollection(supabaseClient, cardData) {
+    if (USE_SUPABASE && supabaseClient) {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const { error } = await supabaseClient
             .from('cards')
-            .insert([{ card_data: cardData }]);
+            .insert([{
+                user_id: user.id,
+                card_data: cardData
+            }]);
 
         if (error) throw error;
     } else {
-        const collection = await loadCollection();
+        const collection = await loadCollection(null);
         collection.push(cardData);
-        await saveCollection(collection);
+        await saveCollection(null, collection);
     }
 }
 
-async function removeCardFromCollection(cardName) {
-    if (USE_SUPABASE) {
+async function removeCardFromCollection(supabaseClient, cardName) {
+    if (USE_SUPABASE && supabaseClient) {
         // Find and delete the card
-        const collection = await loadCollection();
+        const collection = await loadCollection(supabaseClient);
         const filtered = collection.filter(card =>
             card.name.toLowerCase() !== cardName.toLowerCase()
         );
@@ -104,10 +135,10 @@ async function removeCardFromCollection(cardName) {
             return false; // Card not found
         }
 
-        await saveCollection(filtered);
+        await saveCollection(supabaseClient, filtered);
         return true;
     } else {
-        const collection = await loadCollection();
+        const collection = await loadCollection(null);
         const filtered = collection.filter(card =>
             card.name.toLowerCase() !== cardName.toLowerCase()
         );
@@ -116,7 +147,7 @@ async function removeCardFromCollection(cardName) {
             return false;
         }
 
-        await saveCollection(filtered);
+        await saveCollection(null, filtered);
         return true;
     }
 }
@@ -180,7 +211,8 @@ app.post('/api/cards/batch', async (req, res) => {
 // Get entire collection
 app.get('/api/collection', async (req, res) => {
     try {
-        const collection = await loadCollection();
+        const client = getSupabaseClient(req);
+        const collection = await loadCollection(client);
         res.json(collection);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -190,13 +222,14 @@ app.get('/api/collection', async (req, res) => {
 // Add cards to collection
 app.post('/api/collection', async (req, res) => {
     try {
+        const client = getSupabaseClient(req);
         const { cardNames } = req.body;
 
         if (!Array.isArray(cardNames)) {
             return res.status(400).json({ error: 'cardNames must be an array' });
         }
 
-        const collection = await loadCollection();
+        const collection = await loadCollection(client);
         const results = [];
         const errors = [];
         const skipped = [];
@@ -219,7 +252,7 @@ app.post('/api/collection', async (req, res) => {
 
                 if (response.ok) {
                     const data = await response.json();
-                    await addCardToCollection(data);
+                    await addCardToCollection(client, data);
                     results.push(data.name);
                 } else {
                     errors.push(cardName);
@@ -229,7 +262,7 @@ app.post('/api/collection', async (req, res) => {
             }
         }
 
-        const updatedCollection = await loadCollection();
+        const updatedCollection = await loadCollection(client);
 
         res.json({
             added: results,
@@ -245,14 +278,15 @@ app.post('/api/collection', async (req, res) => {
 // Remove a card from collection
 app.delete('/api/collection/:name', async (req, res) => {
     try {
+        const client = getSupabaseClient(req);
         const cardName = req.params.name;
-        const removed = await removeCardFromCollection(cardName);
+        const removed = await removeCardFromCollection(client, cardName);
 
         if (!removed) {
             return res.status(404).json({ error: 'Card not found in collection' });
         }
 
-        const collection = await loadCollection();
+        const collection = await loadCollection(client);
 
         res.json({
             message: 'Card removed successfully',
@@ -266,7 +300,8 @@ app.delete('/api/collection/:name', async (req, res) => {
 // Clear entire collection
 app.delete('/api/collection', async (req, res) => {
     try {
-        await saveCollection([]);
+        const client = getSupabaseClient(req);
+        await saveCollection(client, []);
         res.json({ message: 'Collection cleared successfully' });
     } catch (error) {
         res.status(500).json({ error: error.message });

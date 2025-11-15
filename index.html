@@ -505,12 +505,142 @@
             margin-bottom: 20px;
             opacity: 0.5;
         }
+
+        /* Auth styles */
+        .auth-container {
+            max-width: 400px;
+            margin: 50px auto;
+            background: rgba(255,255,255,0.05);
+            padding: 40px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .auth-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            border: 2px solid transparent;
+            border-radius: 8px;
+            color: #95a5a6;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .auth-tab.active {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            color: white;
+            border-color: #f39c12;
+        }
+
+        .auth-form {
+            display: none;
+        }
+
+        .auth-form.active {
+            display: block;
+        }
+
+        .user-info {
+            background: rgba(39, 174, 96, 0.2);
+            border: 2px solid #27ae60;
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-email {
+            color: #2ecc71;
+            font-weight: 600;
+        }
+
+        .logout-btn {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🎴 MTG Synergy Analyzer</h1>
 
+        <!-- User Info (shown when logged in) -->
+        <div id="userInfo" class="user-info hidden">
+            <div>
+                <span>👤 </span>
+                <span id="userEmail" class="user-email"></span>
+            </div>
+            <button onclick="logout()" class="logout-btn">Cerrar Sesión</button>
+        </div>
+
+        <!-- Auth Forms (shown when not logged in) -->
+        <div id="authContainer" class="auth-container hidden">
+            <div class="auth-header">
+                <h2>Inicia sesión para continuar</h2>
+                <p style="color: #95a5a6; margin-top: 10px;">Cada usuario tiene su propia colección</p>
+            </div>
+
+            <div class="auth-tabs">
+                <div class="auth-tab active" onclick="switchAuthTab('login')">Iniciar Sesión</div>
+                <div class="auth-tab" onclick="switchAuthTab('register')">Registrarse</div>
+            </div>
+
+            <!-- Login Form -->
+            <div id="loginForm" class="auth-form active">
+                <div class="input-group">
+                    <label for="loginEmail">Email:</label>
+                    <input type="email" id="loginEmail" placeholder="tu@email.com">
+                </div>
+                <div class="input-group">
+                    <label for="loginPassword">Contraseña:</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••">
+                </div>
+                <button onclick="login()" id="loginBtn" style="width: 100%; margin-top: 10px;">
+                    Iniciar Sesión
+                </button>
+                <div id="loginError"></div>
+            </div>
+
+            <!-- Register Form -->
+            <div id="registerForm" class="auth-form">
+                <div class="input-group">
+                    <label for="registerEmail">Email:</label>
+                    <input type="email" id="registerEmail" placeholder="tu@email.com">
+                </div>
+                <div class="input-group">
+                    <label for="registerPassword">Contraseña:</label>
+                    <input type="password" id="registerPassword" placeholder="••••••••">
+                    <p class="help-text">Mínimo 6 caracteres</p>
+                </div>
+                <button onclick="register()" id="registerBtn" style="width: 100%; margin-top: 10px;">
+                    Registrarse
+                </button>
+                <div id="registerError"></div>
+            </div>
+        </div>
+
+        <!-- Main App (shown when logged in) -->
+        <div id="mainApp" class="hidden">
         <!-- Tab Navigation -->
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('analyze')">Analizar Sinergia</button>
@@ -571,18 +701,190 @@
 
             <div id="addResults"></div>
         </div>
+        </div>
+        <!-- End mainApp -->
     </div>
 
     <script>
+        // Supabase configuration (get from environment or hardcode for now)
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // Replace with your Supabase URL
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Replace with your Supabase anon key
+
+        // Initialize Supabase client
+        let supabaseClient = null;
+        let currentUser = null;
+        let sessionToken = null;
+
+        // Check if we have Supabase credentials
+        const USE_AUTH = SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY';
+
+        if (USE_AUTH) {
+            // Import Supabase from CDN
+            import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm').then(module => {
+                const { createClient } = module;
+                supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                initAuth();
+            });
+        } else {
+            // No auth configured, show main app
+            document.getElementById('mainApp').classList.remove('hidden');
+        }
+
         // Use current host for API calls (works both locally and in production)
         const API_URL = window.location.origin;
         let commanderData = null;
         let cardCollection = [];
         let allCollectionData = [];
 
-        // Load collection on page load
+        // Authentication functions
+        async function initAuth() {
+            // Check for existing session
+            const { data: { session } } = await supabaseClient.auth.getSession();
+
+            if (session) {
+                currentUser = session.user;
+                sessionToken = session.access_token;
+                showMainApp();
+            } else {
+                showAuthForms();
+            }
+
+            // Listen for auth changes
+            supabaseClient.auth.onAuthStateChange((event, session) => {
+                if (session) {
+                    currentUser = session.user;
+                    sessionToken = session.access_token;
+                    showMainApp();
+                } else {
+                    currentUser = null;
+                    sessionToken = null;
+                    showAuthForms();
+                }
+            });
+        }
+
+        function showMainApp() {
+            document.getElementById('authContainer').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            document.getElementById('userInfo').classList.remove('hidden');
+            document.getElementById('userEmail').textContent = currentUser.email;
+            loadCollection(); // Load user's collection
+            loadSavedAnalysis(); // Load saved analysis results
+        }
+
+        function showAuthForms() {
+            document.getElementById('authContainer').classList.remove('hidden');
+            document.getElementById('mainApp').classList.add('hidden');
+            document.getElementById('userInfo').classList.add('hidden');
+        }
+
+        function switchAuthTab(tab) {
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+
+            if (tab === 'login') {
+                document.querySelectorAll('.auth-tab')[0].classList.add('active');
+                document.getElementById('loginForm').classList.add('active');
+            } else {
+                document.querySelectorAll('.auth-tab')[1].classList.add('active');
+                document.getElementById('registerForm').classList.add('active');
+            }
+        }
+
+        async function login() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const errorDiv = document.getElementById('loginError');
+            const loginBtn = document.getElementById('loginBtn');
+
+            if (!email || !password) {
+                errorDiv.innerHTML = '<div class="error">Por favor completa todos los campos</div>';
+                return;
+            }
+
+            loginBtn.disabled = true;
+            errorDiv.innerHTML = '';
+
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email,
+                    password
+                });
+
+                if (error) throw error;
+
+                // Success - auth state change will handle UI update
+            } catch (error) {
+                errorDiv.innerHTML = `<div class="error">${error.message}</div>`;
+                loginBtn.disabled = false;
+            }
+        }
+
+        async function register() {
+            const email = document.getElementById('registerEmail').value.trim();
+            const password = document.getElementById('registerPassword').value;
+            const errorDiv = document.getElementById('registerError');
+            const registerBtn = document.getElementById('registerBtn');
+
+            if (!email || !password) {
+                errorDiv.innerHTML = '<div class="error">Por favor completa todos los campos</div>';
+                return;
+            }
+
+            if (password.length < 6) {
+                errorDiv.innerHTML = '<div class="error">La contraseña debe tener al menos 6 caracteres</div>';
+                return;
+            }
+
+            registerBtn.disabled = true;
+            errorDiv.innerHTML = '';
+
+            try {
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email,
+                    password
+                });
+
+                if (error) throw error;
+
+                errorDiv.innerHTML = '<div class="success-message">Cuenta creada exitosamente. Puedes iniciar sesión.</div>';
+                setTimeout(() => switchAuthTab('login'), 2000);
+            } catch (error) {
+                errorDiv.innerHTML = `<div class="error">${error.message}</div>`;
+            } finally {
+                registerBtn.disabled = false;
+            }
+        }
+
+        async function logout() {
+            if (!confirm('¿Seguro que quieres cerrar sesión?')) return;
+
+            try {
+                await supabaseClient.auth.signOut();
+                // Auth state change will handle UI update
+            } catch (error) {
+                alert('Error al cerrar sesión: ' + error.message);
+            }
+        }
+
+        // Helper to add auth header to fetch requests
+        function getAuthHeaders() {
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+
+            if (sessionToken) {
+                headers['Authorization'] = `Bearer ${sessionToken}`;
+            }
+
+            return headers;
+        }
+
+        // Load collection on page load (only if not using auth or already authenticated)
         window.addEventListener('DOMContentLoaded', () => {
-            loadCollection();
+            if (!USE_AUTH) {
+                loadCollection();
+            }
         });
 
         // Tab switching
@@ -608,7 +910,9 @@
         // Load collection from server
         async function loadCollection() {
             try {
-                const response = await fetch(`${API_URL}/api/collection`);
+                const response = await fetch(`${API_URL}/api/collection`, {
+                    headers: getAuthHeaders()
+                });
                 if (!response.ok) {
                     throw new Error('Error al cargar la colección');
                 }
@@ -706,9 +1010,7 @@
             try {
                 const response = await fetch(`${API_URL}/api/collection`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({ cardNames })
                 });
 
@@ -752,7 +1054,8 @@
 
             try {
                 const response = await fetch(`${API_URL}/api/collection/${encodeURIComponent(cardName)}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
                 });
 
                 if (!response.ok) {
@@ -773,7 +1076,8 @@
 
             try {
                 const response = await fetch(`${API_URL}/api/collection`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
                 });
 
                 if (!response.ok) {
@@ -976,9 +1280,56 @@
         let allSynergies = [];
         let activeTypeFilter = 'all';
 
+        // Load saved analysis on page load (per user)
+        function loadSavedAnalysis() {
+            if (!USE_AUTH || !currentUser) return;
+
+            const savedKey = `analysis_${currentUser.id}`;
+            const saved = localStorage.getItem(savedKey);
+
+            if (saved) {
+                try {
+                    const { commanderData: savedCommander, synergies, timestamp } = JSON.parse(saved);
+
+                    // Show saved results if less than 24 hours old
+                    const age = Date.now() - timestamp;
+                    if (age < 24 * 60 * 60 * 1000) {
+                        commanderData = savedCommander;
+                        displayResults(synergies, []);
+                    } else {
+                        // Clear old results
+                        localStorage.removeItem(savedKey);
+                    }
+                } catch (e) {
+                    console.error('Error loading saved analysis:', e);
+                }
+            }
+        }
+
+        // Save analysis results
+        function saveAnalysisResults(synergies) {
+            if (!USE_AUTH || !currentUser) return;
+
+            const savedKey = `analysis_${currentUser.id}`;
+            const dataToSave = {
+                commanderData,
+                synergies,
+                timestamp: Date.now()
+            };
+
+            try {
+                localStorage.setItem(savedKey, JSON.stringify(dataToSave));
+            } catch (e) {
+                console.error('Error saving analysis:', e);
+            }
+        }
+
         function displayResults(synergies, errors) {
             allSynergies = synergies;
             const resultsDiv = document.getElementById('results');
+
+            // Save results for persistence
+            saveAnalysisResults(synergies);
 
             const highSynergy = synergies.filter(s => s.score >= 20);
             const mediumSynergy = synergies.filter(s => s.score >= 5 && s.score < 20);
