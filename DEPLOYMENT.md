@@ -11,7 +11,7 @@ Esta guía te ayudará a deployar tu MTG Synergy Analyzer en Vercel usando Supab
 4. Copia y pega el contenido de `supabase-schema.sql`
 5. Click en "Run" para crear la tabla
 
-**IMPORTANTE**: El nuevo schema incluye soporte para usuarios. Si ya tenías datos anteriores, se perderán al ejecutar el nuevo schema.
+**IMPORTANTE**: El nuevo schema incluye soporte para usuarios. Si ya tenías datos anteriores y recibes el error `column "user_id" does not exist`, consulta la [Guía de Migración](MIGRATION.md) para actualizar tu base de datos sin perder datos.
 
 ### 1.2 Copiar Credenciales
 Ve a **Settings** → **API** y copia:
@@ -131,6 +131,11 @@ Cada vez que hagas push a la rama main, Vercel automáticamente re-desplegará t
 ### La colección no persiste
 - Verifica que las variables de entorno de Supabase estén configuradas
 - Revisa los logs en Vercel → Deployments → tu deployment → Logs
+
+### Error: "column user_id does not exist"
+- Este error indica que tu base de datos necesita ser migrada
+- Consulta la [Guía de Migración](MIGRATION.md) para instrucciones detalladas
+- Opciones: migrar datos existentes o recrear la tabla desde cero
 
 ## Notas Importantes
 
