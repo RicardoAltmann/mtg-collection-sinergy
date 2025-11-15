@@ -923,9 +923,9 @@
         <div id="mainApp" class="hidden">
         <!-- Tab Navigation -->
         <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('analyze')">Analizar Sinergia</button>
-            <button class="tab-btn" onclick="switchTab('collection')">Mi Colección</button>
-            <button class="tab-btn" onclick="switchTab('add')">Agregar Cartas</button>
+            <button class="tab-btn active" onclick="switchTab('analyze', event)">Analizar Sinergia</button>
+            <button class="tab-btn" onclick="switchTab('collection', event)">Mi Colección</button>
+            <button class="tab-btn" onclick="switchTab('add', event)">Agregar Cartas</button>
         </div>
 
         <!-- Analyze Tab -->
@@ -1086,7 +1086,7 @@
             </div>
 
             <div class="modal-footer">
-                <button onclick="closeOnboarding()">¡Empecemos! 🚀</button>
+                <button type="button" onclick="closeOnboarding()">¡Empecemos! 🚀</button>
             </div>
         </div>
     </div>
@@ -1201,9 +1201,22 @@
         }
 
         function closeOnboarding() {
-            document.getElementById('onboardingModal').classList.add('hidden');
-            const onboardingKey = USE_AUTH && currentUser ? `onboarding_seen_${currentUser.id}` : 'onboarding_seen';
-            localStorage.setItem(onboardingKey, 'true');
+            try {
+                const modal = document.getElementById('onboardingModal');
+                if (modal) {
+                    modal.classList.add('hidden');
+                }
+
+                const onboardingKey = USE_AUTH && currentUser ? `onboarding_seen_${currentUser.id}` : 'onboarding_seen';
+                localStorage.setItem(onboardingKey, 'true');
+            } catch (error) {
+                console.error('Error closing onboarding:', error);
+                // Ensure modal is closed even if there's an error
+                const modal = document.getElementById('onboardingModal');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+            }
         }
 
         function showAuthForms() {
@@ -1420,7 +1433,7 @@
         });
 
         // Tab switching
-        function switchTab(tabName) {
+        function switchTab(tabName, event) {
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
@@ -1431,7 +1444,9 @@
 
             // Show selected tab
             document.getElementById(tabName + 'Tab').classList.add('active');
-            event.target.classList.add('active');
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
 
             // Load collection when switching to collection tab
             if (tabName === 'collection') {
@@ -1503,7 +1518,7 @@
                         <div class="empty-state-icon">🎴</div>
                         <h3 style="color: #f39c12; margin-bottom: 15px;">Tu colección está vacía</h3>
                         <p style="margin-bottom: 20px; font-size: 1.1em;">¡Comienza agregando tus cartas de Magic!</p>
-                        <button onclick="switchTab('add')" style="margin-top: 10px;">
+                        <button onclick="switchTab('add', event)" style="margin-top: 10px;">
                             ➕ Agregar Cartas
                         </button>
                         <div style="margin-top: 30px; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px; text-align: left;">
@@ -2041,7 +2056,7 @@
                     </div>
                     <div class="filter-group">
                         <div class="filter-buttons">
-                            <button class="filter-btn ${activeTypeFilter === 'all' ? 'active' : ''}" onclick="filterByType('all')">
+                            <button class="filter-btn ${activeTypeFilter === 'all' ? 'active' : ''}" onclick="filterByType('all', event)">
                                 🔮 Todas (${synergies.length})
                             </button>
                             ${cardTypes.map(type => {
@@ -2055,7 +2070,7 @@
                                     'land': '🏔️'
                                 };
                                 return `
-                                <button class="filter-btn ${activeTypeFilter === type.key ? 'active' : ''}" onclick="filterByType('${type.key}')">
+                                <button class="filter-btn ${activeTypeFilter === type.key ? 'active' : ''}" onclick="filterByType('${type.key}', event)">
                                     ${icons[type.key] || '📜'} ${type.name} (${type.count})
                                 </button>
                             `}).join('')}
@@ -2195,7 +2210,7 @@
                 .sort((a, b) => b.count - a.count);
         }
 
-        function filterByType(type) {
+        function filterByType(type, event) {
             activeTypeFilter = type;
 
             let filtered = allSynergies;
@@ -2225,7 +2240,9 @@
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            event.target.classList.add('active');
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
         }
 
         function toggleCollapse(id) {
