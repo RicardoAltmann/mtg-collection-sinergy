@@ -909,19 +909,46 @@
 
         // Load collection from server
         async function loadCollection() {
+            const listDiv = document.getElementById('collectionList');
+
             try {
+                // Show loading indicator
+                if (listDiv) {
+                    listDiv.innerHTML = '<div class="loading">Cargando tu colección...</div>';
+                }
+
                 const response = await fetch(`${API_URL}/api/collection`, {
                     headers: getAuthHeaders()
                 });
+
                 if (!response.ok) {
-                    throw new Error('Error al cargar la colección');
+                    const errorText = await response.text();
+                    throw new Error(`Error al cargar la colección: ${response.status} - ${errorText}`);
                 }
 
-                allCollectionData = await response.json();
+                const data = await response.json();
+
+                // Validate data is an array
+                if (!Array.isArray(data)) {
+                    throw new Error('La respuesta del servidor no es válida (no es un array)');
+                }
+
+                allCollectionData = data;
                 updateCollectionCount();
                 displayCollection(allCollectionData);
             } catch (error) {
                 console.error('Error loading collection:', error);
+
+                // Show error to user
+                if (listDiv) {
+                    listDiv.innerHTML = `
+                        <div class="error">
+                            <strong>Error al cargar la colección</strong><br>
+                            ${error.message}<br>
+                            <button onclick="loadCollection()" style="margin-top: 10px;">Reintentar</button>
+                        </div>
+                    `;
+                }
             }
         }
 
@@ -945,13 +972,23 @@
 
             let html = '<div class="synergy-list">';
             cards.forEach(card => {
+                // Validate card data before displaying
+                const cardName = card.name || 'Nombre desconocido';
+                const cardType = card.type_line || 'Tipo desconocido';
+
+                // Skip cards with invalid data
+                if (!card.name) {
+                    console.warn('Carta con datos incompletos:', card);
+                    return;
+                }
+
                 html += `
                     <div class="collection-item">
                         <div class="collection-item-info">
-                            <div class="collection-item-name">${card.name}</div>
-                            <div class="collection-item-type">${card.type_line}</div>
+                            <div class="collection-item-name">${cardName}</div>
+                            <div class="collection-item-type">${cardType}</div>
                         </div>
-                        <button class="delete-btn" onclick="removeFromCollection('${card.name.replace(/'/g, "\\'")}')">
+                        <button class="delete-btn" onclick="removeFromCollection('${cardName.replace(/'/g, "\\'")}')">
                             Eliminar
                         </button>
                     </div>
@@ -967,18 +1004,23 @@
             const searchTerm = document.getElementById('searchCollection').value.toLowerCase();
             const sortBy = document.getElementById('sortCollection')?.value || 'name';
 
-            let filtered = allCollectionData.filter(card =>
-                card.name.toLowerCase().includes(searchTerm) ||
-                card.type_line.toLowerCase().includes(searchTerm)
-            );
+            let filtered = allCollectionData.filter(card => {
+                // Skip cards without name (invalid data)
+                if (!card.name) return false;
+
+                const cardName = card.name.toLowerCase();
+                const cardType = (card.type_line || '').toLowerCase();
+
+                return cardName.includes(searchTerm) || cardType.includes(searchTerm);
+            });
 
             // Sort
             filtered.sort((a, b) => {
                 switch(sortBy) {
                     case 'name':
-                        return a.name.localeCompare(b.name);
+                        return (a.name || '').localeCompare(b.name || '');
                     case 'type':
-                        return a.type_line.localeCompare(b.type_line);
+                        return (a.type_line || '').localeCompare(b.type_line || '');
                     case 'date':
                         return 0; // Keep original order (most recent first in Supabase)
                     default:
@@ -1015,7 +1057,8 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error('Error al agregar cartas');
+                    const errorText = await response.text();
+                    throw new Error(`Error al agregar cartas: ${response.status} - ${errorText}`);
                 }
 
                 const result = await response.json();
