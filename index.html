@@ -39,6 +39,7 @@
             margin-bottom: 30px;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
         
         .input-group {
@@ -63,9 +64,65 @@
             transition: border-color 0.3s;
         }
         
-        input[type="text"]:focus, textarea:focus {
+        input[type="text"]:focus, textarea:focus, input[type="email"]:focus, input[type="password"]:focus {
             outline: none;
             border-color: #f39c12;
+        }
+
+        input[type="email"], input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.3);
+            color: #e4e4e4;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input.valid {
+            border-color: #27ae60;
+        }
+
+        input.invalid {
+            border-color: #e74c3c;
+        }
+
+        .validation-message {
+            font-size: 0.85em;
+            margin-top: 5px;
+            min-height: 18px;
+        }
+
+        .validation-message.success {
+            color: #2ecc71;
+        }
+
+        .validation-message.error {
+            color: #ff6b6b;
+        }
+
+        .password-requirements {
+            font-size: 0.85em;
+            margin-top: 8px;
+            color: #95a5a6;
+        }
+
+        .password-requirements li {
+            margin: 4px 0;
+            list-style: none;
+        }
+
+        .password-requirements li.met {
+            color: #2ecc71;
+        }
+
+        .password-requirements li.met::before {
+            content: "✓ ";
+        }
+
+        .password-requirements li:not(.met)::before {
+            content: "○ ";
         }
         
         textarea {
@@ -101,6 +158,65 @@
             cursor: not-allowed;
             transform: none;
             box-shadow: none;
+        }
+
+        /* Accessibility improvements */
+        button:focus-visible,
+        .tab-btn:focus-visible,
+        .filter-btn:focus-visible,
+        .auth-tab:focus-visible {
+            outline: 3px solid #f39c12;
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(243, 156, 18, 0.3);
+        }
+
+        input:focus-visible,
+        textarea:focus-visible,
+        select:focus-visible {
+            outline: 3px solid #f39c12;
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(243, 156, 18, 0.3);
+        }
+
+        a:focus-visible {
+            outline: 3px solid #3498db;
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+
+        /* Improved contrast for better readability (WCAG AA) */
+        .help-text {
+            color: #a8b4b8; /* Improved from #95a5a6 for better contrast */
+        }
+
+        .card-type {
+            color: #a8b4b8; /* Improved contrast */
+        }
+
+        .stat-label {
+            color: #a8b4b8; /* Improved contrast */
+        }
+
+        .collection-item-type {
+            color: #a8b4b8; /* Improved contrast */
+        }
+
+        /* Skip to main content link for screen readers */
+        .skip-to-main {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: #f39c12;
+            color: #1a1a2e;
+            padding: 8px 16px;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 0 0 8px 0;
+            z-index: 10000;
+        }
+
+        .skip-to-main:focus {
+            top: 0;
         }
         
         .loading {
@@ -514,6 +630,8 @@
             padding: 40px;
             border-radius: 12px;
             border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
 
         .auth-header {
@@ -578,9 +696,165 @@
         .hidden {
             display: none;
         }
+
+        /* Onboarding Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 2px solid #f39c12;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(243, 156, 18, 0.3);
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .modal-header h2 {
+            color: #f39c12;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .modal-header p {
+            color: #95a5a6;
+            font-size: 1.1em;
+        }
+
+        .onboarding-steps {
+            margin: 20px 0;
+        }
+
+        .onboarding-step {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            border-left: 4px solid #f39c12;
+            transition: all 0.2s;
+        }
+
+        .onboarding-step:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(5px);
+        }
+
+        .step-number {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .step-title {
+            color: #f39c12;
+            font-weight: 600;
+            font-size: 1.1em;
+            margin-bottom: 8px;
+        }
+
+        .step-description {
+            color: #bdc3c7;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+
+        .modal-footer {
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .modal-footer button {
+            padding: 12px 40px;
+            font-size: 1.1em;
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 250px;
+            background-color: rgba(0, 0, 0, 0.9);
+            color: #e4e4e4;
+            text-align: center;
+            border-radius: 8px;
+            padding: 10px;
+            position: absolute;
+            z-index: 1001;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -125px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.9em;
+            border: 1px solid #f39c12;
+        }
+
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #f39c12 transparent transparent transparent;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
+    <a href="#mainApp" class="skip-to-main">Saltar al contenido principal</a>
     <div class="container">
         <h1>🎴 MTG Synergy Analyzer</h1>
 
@@ -609,11 +883,13 @@
             <div id="loginForm" class="auth-form active">
                 <div class="input-group">
                     <label for="loginEmail">Email:</label>
-                    <input type="email" id="loginEmail" placeholder="tu@email.com">
+                    <input type="email" id="loginEmail" placeholder="tu@email.com" oninput="validateEmail(this, 'loginEmailValidation')">
+                    <div id="loginEmailValidation" class="validation-message"></div>
                 </div>
                 <div class="input-group">
                     <label for="loginPassword">Contraseña:</label>
-                    <input type="password" id="loginPassword" placeholder="••••••••">
+                    <input type="password" id="loginPassword" placeholder="••••••••" oninput="validateLoginPassword()">
+                    <div id="loginPasswordValidation" class="validation-message"></div>
                 </div>
                 <button onclick="login()" id="loginBtn" style="width: 100%; margin-top: 10px;">
                     Iniciar Sesión
@@ -625,12 +901,16 @@
             <div id="registerForm" class="auth-form">
                 <div class="input-group">
                     <label for="registerEmail">Email:</label>
-                    <input type="email" id="registerEmail" placeholder="tu@email.com">
+                    <input type="email" id="registerEmail" placeholder="tu@email.com" oninput="validateEmail(this, 'registerEmailValidation')">
+                    <div id="registerEmailValidation" class="validation-message"></div>
                 </div>
                 <div class="input-group">
                     <label for="registerPassword">Contraseña:</label>
-                    <input type="password" id="registerPassword" placeholder="••••••••">
-                    <p class="help-text">Mínimo 6 caracteres</p>
+                    <input type="password" id="registerPassword" placeholder="••••••••" oninput="validateRegisterPassword()">
+                    <ul class="password-requirements">
+                        <li id="req-length">Mínimo 6 caracteres</li>
+                        <li id="req-notempty">No está vacía</li>
+                    </ul>
                 </div>
                 <button onclick="register()" id="registerBtn" style="width: 100%; margin-top: 10px;">
                     Registrarse
@@ -690,19 +970,125 @@
         <!-- Add Cards Tab -->
         <div id="addTab" class="tab-content">
             <div class="input-section">
-                <div class="input-group">
-                    <label for="newCards">Agregar cartas a la colección (una por línea):</label>
-                    <textarea id="newCards" placeholder="Sol Ring&#10;Lightning Bolt&#10;Counterspell&#10;..."></textarea>
-                    <p class="help-text">Pega los nombres de las cartas que quieres agregar, una por línea</p>
+                <div style="background: rgba(52, 152, 219, 0.1); border: 2px solid rgba(52, 152, 219, 0.3); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                    <h3 style="color: #3498db; margin-bottom: 15px;">💡 Cómo importar tus cartas</h3>
+                    <div style="display: grid; gap: 15px;">
+                        <div style="display: flex; gap: 10px; align-items: flex-start;">
+                            <span style="color: #3498db; font-size: 1.5em;">1️⃣</span>
+                            <div>
+                                <strong style="color: #e4e4e4;">Una carta por línea</strong>
+                                <p style="margin: 5px 0 0 0; color: #95a5a6; font-size: 0.9em;">
+                                    Escribe o pega cada nombre de carta en una línea separada
+                                </p>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: flex-start;">
+                            <span style="color: #3498db; font-size: 1.5em;">2️⃣</span>
+                            <div>
+                                <strong style="color: #e4e4e4;">Nombres en inglés</strong>
+                                <p style="margin: 5px 0 0 0; color: #95a5a6; font-size: 0.9em;">
+                                    Los nombres deben estar en inglés según Scryfall (ej: "Lightning Bolt", no "Relámpago")
+                                </p>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: flex-start;">
+                            <span style="color: #3498db; font-size: 1.5em;">3️⃣</span>
+                            <div>
+                                <strong style="color: #e4e4e4;">Detección automática</strong>
+                                <p style="margin: 5px 0 0 0; color: #95a5a6; font-size: 0.9em;">
+                                    El sistema busca las cartas, detecta duplicados y te avisa de errores
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <button onclick="addToCollection()" id="addBtn">Agregar a Colección</button>
+                <div class="input-group">
+                    <label for="newCards">
+                        Nombres de cartas (una por línea):
+                        <span style="color: #95a5a6; font-weight: 400; font-size: 0.9em; margin-left: 10px;">
+                            <span class="tooltip">
+                                ❓
+                                <span class="tooltiptext">Pega una lista de nombres de cartas. Ejemplo:<br>Sol Ring<br>Lightning Bolt<br>Counterspell</span>
+                            </span>
+                        </span>
+                    </label>
+                    <textarea id="newCards" placeholder="Sol Ring&#10;Lightning Bolt&#10;Counterspell&#10;Command Tower&#10;Arcane Signet&#10;..."></textarea>
+                    <div style="margin-top: 10px; padding: 15px; background: rgba(39, 174, 96, 0.1); border-left: 3px solid #27ae60; border-radius: 4px;">
+                        <p style="margin: 0; font-size: 0.9em; color: #2ecc71;">
+                            <strong>✓ Tip:</strong> Puedes copiar listas desde archivos de texto, exportaciones de Archidekt, Moxfield, o cualquier formato de lista simple.
+                        </p>
+                    </div>
+                </div>
+
+                <button onclick="addToCollection()" id="addBtn">
+                    ➕ Agregar a Colección
+                </button>
             </div>
 
             <div id="addResults"></div>
         </div>
         </div>
         <!-- End mainApp -->
+    </div>
+
+    <!-- Onboarding Modal -->
+    <div id="onboardingModal" class="modal-overlay hidden" role="dialog" aria-labelledby="onboarding-title" aria-modal="true">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="onboarding-title">🎉 ¡Bienvenido al MTG Synergy Analyzer!</h2>
+                <p>Te ayudaremos a construir el mejor mazo Commander</p>
+            </div>
+
+            <div class="onboarding-steps">
+                <div class="onboarding-step">
+                    <div>
+                        <span class="step-number">1</span>
+                        <span class="step-title">Agrega tus cartas</span>
+                    </div>
+                    <p class="step-description">
+                        Ve a la pestaña <strong>"Agregar Cartas"</strong> y pega los nombres de tus cartas (una por línea).
+                        También puedes importar desde archivos de texto.
+                    </p>
+                </div>
+
+                <div class="onboarding-step">
+                    <div>
+                        <span class="step-number">2</span>
+                        <span class="step-title">Revisa tu colección</span>
+                    </div>
+                    <p class="step-description">
+                        En <strong>"Mi Colección"</strong> verás todas tus cartas. Puedes buscarlas, ordenarlas y eliminar las que no necesites.
+                    </p>
+                </div>
+
+                <div class="onboarding-step">
+                    <div>
+                        <span class="step-number">3</span>
+                        <span class="step-title">Analiza sinergias</span>
+                    </div>
+                    <p class="step-description">
+                        En <strong>"Analizar Sinergia"</strong> ingresa el nombre de tu Commander y descubre qué cartas de tu colección
+                        funcionan mejor con él. El sistema calculará puntuaciones de sinergia basadas en mecánicas, tipos y keywords.
+                    </p>
+                </div>
+
+                <div class="onboarding-step">
+                    <div>
+                        <span class="step-number">4</span>
+                        <span class="step-title">Construye tu mazo</span>
+                    </div>
+                    <p class="step-description">
+                        Usa las cartas con <strong style="color: #27ae60;">Alta Sinergia</strong> como base de tu mazo.
+                        Las cartas se organizan automáticamente por nivel de sinergia y tipo.
+                    </p>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button onclick="closeOnboarding()">¡Empecemos! 🚀</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -724,10 +1110,42 @@
                 const { createClient } = module;
                 supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 initAuth();
+            }).catch(error => {
+                // Show error message if Supabase fails to load
+                showDemoModeMessage('Error al cargar autenticación. Por favor recarga la página.');
             });
         } else {
-            // No auth configured, show main app
-            document.getElementById('mainApp').classList.remove('hidden');
+            // No auth configured, show demo mode message
+            showDemoModeMessage();
+        }
+
+        function showDemoModeMessage(customMessage = null) {
+            const mainApp = document.getElementById('mainApp');
+            const authContainer = document.getElementById('authContainer');
+
+            // Hide auth container in demo mode
+            authContainer.classList.add('hidden');
+
+            // Show main app with demo message
+            mainApp.classList.remove('hidden');
+            mainApp.insertAdjacentHTML('afterbegin', `
+                <div class="success-message" style="background: rgba(243, 156, 18, 0.2); border-color: #f39c12; margin-bottom: 20px;">
+                    <h3 style="margin: 0 0 10px 0; color: #f39c12;">🎮 Modo Demo</h3>
+                    <p style="margin: 0 0 10px 0;">
+                        ${customMessage || 'Esta aplicación funciona sin autenticación configurada. Tus datos se guardarán localmente en este navegador.'}
+                    </p>
+                    <details style="margin-top: 10px;">
+                        <summary style="cursor: pointer; font-weight: 600; color: #f39c12;">
+                            ℹ️ ¿Cómo habilitar autenticación multi-usuario?
+                        </summary>
+                        <div style="margin-top: 10px; padding-left: 10px; border-left: 2px solid #f39c12;">
+                            <p style="margin: 5px 0;">1. Crea una cuenta en <a href="https://supabase.com" target="_blank" style="color: #3498db;">Supabase</a></p>
+                            <p style="margin: 5px 0;">2. Configura las variables SUPABASE_URL y SUPABASE_ANON_KEY en el código</p>
+                            <p style="margin: 5px 0;">3. Cada usuario tendrá su propia colección protegida</p>
+                        </div>
+                    </details>
+                </div>
+            `);
         }
 
         // Use current host for API calls (works both locally and in production)
@@ -770,6 +1188,22 @@
             document.getElementById('userEmail').textContent = currentUser.email;
             loadCollection(); // Load user's collection
             loadSavedAnalysis(); // Load saved analysis results
+
+            // Show onboarding modal for first-time users
+            const onboardingKey = USE_AUTH && currentUser ? `onboarding_seen_${currentUser.id}` : 'onboarding_seen';
+            if (!localStorage.getItem(onboardingKey)) {
+                showOnboarding();
+            }
+        }
+
+        function showOnboarding() {
+            document.getElementById('onboardingModal').classList.remove('hidden');
+        }
+
+        function closeOnboarding() {
+            document.getElementById('onboardingModal').classList.add('hidden');
+            const onboardingKey = USE_AUTH && currentUser ? `onboarding_seen_${currentUser.id}` : 'onboarding_seen';
+            localStorage.setItem(onboardingKey, 'true');
         }
 
         function showAuthForms() {
@@ -789,6 +1223,104 @@
                 document.querySelectorAll('.auth-tab')[1].classList.add('active');
                 document.getElementById('registerForm').classList.add('active');
             }
+        }
+
+        // Email validation
+        function validateEmail(input, validationId) {
+            const validationDiv = document.getElementById(validationId);
+            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const email = input.value.trim();
+
+            if (email === '') {
+                input.classList.remove('valid', 'invalid');
+                validationDiv.textContent = '';
+                validationDiv.classList.remove('success', 'error');
+                return false;
+            }
+
+            if (emailPattern.test(email)) {
+                input.classList.remove('invalid');
+                input.classList.add('valid');
+                validationDiv.textContent = '✓ Email válido';
+                validationDiv.classList.remove('error');
+                validationDiv.classList.add('success');
+                return true;
+            } else {
+                input.classList.remove('valid');
+                input.classList.add('invalid');
+                validationDiv.textContent = '✗ Email inválido';
+                validationDiv.classList.remove('success');
+                validationDiv.classList.add('error');
+                return false;
+            }
+        }
+
+        // Login password validation
+        function validateLoginPassword() {
+            const input = document.getElementById('loginPassword');
+            const validationDiv = document.getElementById('loginPasswordValidation');
+            const password = input.value;
+
+            if (password === '') {
+                input.classList.remove('valid', 'invalid');
+                validationDiv.textContent = '';
+                validationDiv.classList.remove('success', 'error');
+                return false;
+            }
+
+            if (password.length > 0) {
+                input.classList.remove('invalid');
+                input.classList.add('valid');
+                validationDiv.textContent = '';
+                validationDiv.classList.remove('error');
+                return true;
+            } else {
+                input.classList.remove('valid');
+                input.classList.add('invalid');
+                validationDiv.textContent = '✗ Contraseña requerida';
+                validationDiv.classList.add('error');
+                return false;
+            }
+        }
+
+        // Register password validation
+        function validateRegisterPassword() {
+            const input = document.getElementById('registerPassword');
+            const password = input.value;
+
+            const reqLength = document.getElementById('req-length');
+            const reqNotEmpty = document.getElementById('req-notempty');
+
+            let allMet = true;
+
+            // Check not empty
+            if (password.length > 0) {
+                reqNotEmpty.classList.add('met');
+            } else {
+                reqNotEmpty.classList.remove('met');
+                allMet = false;
+            }
+
+            // Check length
+            if (password.length >= 6) {
+                reqLength.classList.add('met');
+            } else {
+                reqLength.classList.remove('met');
+                allMet = false;
+            }
+
+            // Update input border
+            if (password === '') {
+                input.classList.remove('valid', 'invalid');
+            } else if (allMet) {
+                input.classList.remove('invalid');
+                input.classList.add('valid');
+            } else {
+                input.classList.remove('valid');
+                input.classList.add('invalid');
+            }
+
+            return allMet;
         }
 
         async function login() {
@@ -966,7 +1498,25 @@
             if (!listDiv) return;
 
             if (cards.length === 0) {
-                listDiv.innerHTML = '<div class="error">No hay cartas en tu colección. Ve a "Agregar Cartas" para empezar.</div>';
+                listDiv.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🎴</div>
+                        <h3 style="color: #f39c12; margin-bottom: 15px;">Tu colección está vacía</h3>
+                        <p style="margin-bottom: 20px; font-size: 1.1em;">¡Comienza agregando tus cartas de Magic!</p>
+                        <button onclick="switchTab('add')" style="margin-top: 10px;">
+                            ➕ Agregar Cartas
+                        </button>
+                        <div style="margin-top: 30px; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px; text-align: left;">
+                            <p style="font-weight: 600; margin-bottom: 10px; color: #f39c12;">💡 Consejos para empezar:</p>
+                            <ul style="list-style: none; padding: 0; color: #bdc3c7;">
+                                <li style="margin: 8px 0;">✓ Pega los nombres de cartas (una por línea)</li>
+                                <li style="margin: 8px 0;">✓ Los nombres pueden estar en inglés</li>
+                                <li style="margin: 8px 0;">✓ El sistema buscará automáticamente en Scryfall</li>
+                                <li style="margin: 8px 0;">✓ Las cartas duplicadas se detectan automáticamente</li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
                 return;
             }
 
@@ -1063,17 +1613,75 @@
 
                 const result = await response.json();
 
-                let html = '<div class="success-message">';
-                html += `<strong>✓ ${result.added.length} cartas agregadas exitosamente</strong><br>`;
-                html += `Total en colección: ${result.totalInCollection}`;
-                html += '</div>';
+                let html = '';
 
-                if (result.skipped.length > 0) {
-                    html += `<div class="error">⚠️ Ya en colección (${result.skipped.length}): ${result.skipped.join(', ')}</div>`;
+                // Summary card
+                html += '<div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 12px; margin-bottom: 20px;">';
+                html += '<h3 style="color: #f39c12; margin-bottom: 15px;">📊 Resumen de Importación</h3>';
+                html += '<div class="stats">';
+                html += `
+                    <div class="stat-box" style="border-color: #27ae60;">
+                        <div class="stat-value" style="color: #27ae60;">${result.added.length}</div>
+                        <div class="stat-label">Agregadas</div>
+                    </div>
+                    <div class="stat-box" style="border-color: #f39c12;">
+                        <div class="stat-value" style="color: #f39c12;">${result.skipped.length}</div>
+                        <div class="stat-label">Duplicadas</div>
+                    </div>
+                    <div class="stat-box" style="border-color: #e74c3c;">
+                        <div class="stat-value" style="color: #e74c3c;">${result.errors.length}</div>
+                        <div class="stat-label">No Encontradas</div>
+                    </div>
+                    <div class="stat-box" style="border-color: #3498db;">
+                        <div class="stat-value" style="color: #3498db;">${result.totalInCollection}</div>
+                        <div class="stat-label">Total en Colección</div>
+                    </div>
+                `;
+                html += '</div></div>';
+
+                // Success details
+                if (result.added.length > 0) {
+                    html += '<div class="success-message" style="margin-bottom: 15px;">';
+                    html += `<strong>✓ ${result.added.length} carta${result.added.length !== 1 ? 's' : ''} agregada${result.added.length !== 1 ? 's' : ''} exitosamente</strong>`;
+                    if (result.added.length <= 10) {
+                        html += '<div style="margin-top: 10px; padding-left: 10px; border-left: 3px solid #27ae60;">';
+                        result.added.forEach(card => {
+                            html += `<div style="margin: 5px 0;">• ${card}</div>`;
+                        });
+                        html += '</div>';
+                    } else {
+                        html += `<p style="margin-top: 10px; font-size: 0.9em;">Mostrando primeras 10: ${result.added.slice(0, 10).join(', ')}...</p>`;
+                    }
+                    html += '</div>';
                 }
 
+                // Duplicates
+                if (result.skipped.length > 0) {
+                    html += '<div style="background: rgba(243, 156, 18, 0.2); border: 2px solid #f39c12; padding: 15px; border-radius: 8px; margin-bottom: 15px;">';
+                    html += `<strong style="color: #f39c12;">⚠️ ${result.skipped.length} carta${result.skipped.length !== 1 ? 's' : ''} ya exist${result.skipped.length !== 1 ? 'ían' : 'ía'} en tu colección</strong>`;
+                    if (result.skipped.length <= 10) {
+                        html += '<div style="margin-top: 10px; font-size: 0.9em; color: #f39c12;">';
+                        html += result.skipped.map(card => `• ${card}`).join('<br>');
+                        html += '</div>';
+                    } else {
+                        html += `<p style="margin-top: 10px; font-size: 0.9em; color: #f39c12;">Mostrando primeras 10: ${result.skipped.slice(0, 10).join(', ')}...</p>`;
+                    }
+                    html += '</div>';
+                }
+
+                // Errors
                 if (result.errors.length > 0) {
-                    html += `<div class="error">❌ No encontradas (${result.errors.length}): ${result.errors.join(', ')}</div>`;
+                    html += '<div class="error" style="margin-bottom: 15px;">';
+                    html += `<strong>❌ ${result.errors.length} carta${result.errors.length !== 1 ? 's' : ''} no encontrada${result.errors.length !== 1 ? 's' : ''} en Scryfall</strong>`;
+                    html += '<p style="margin-top: 10px; font-size: 0.9em;">Verifica que los nombres estén correctos (en inglés):</p>';
+                    if (result.errors.length <= 10) {
+                        html += '<div style="margin-top: 10px; font-size: 0.9em;">';
+                        html += result.errors.map(card => `• ${card}`).join('<br>');
+                        html += '</div>';
+                    } else {
+                        html += `<p style="margin-top: 10px; font-size: 0.9em;">Mostrando primeras 10: ${result.errors.slice(0, 10).join(', ')}...</p>`;
+                    }
+                    html += '</div>';
                 }
 
                 resultsDiv.innerHTML = html;
@@ -1388,21 +1996,25 @@
                     <p class="card-type">${commanderData.type_line}</p>
                     <p style="margin-top: 10px; color: #bdc3c7;">${commanderData.oracle_text || ''}</p>
                     <div class="stats">
-                        <div class="stat-box">
+                        <div class="stat-box tooltip">
                             <div class="stat-value">${highSynergy.length}</div>
                             <div class="stat-label">Alta Sinergia</div>
+                            <span class="tooltiptext">Cartas con puntaje ≥20. Comparten mecánicas clave, keywords o sinergias fuertes con tu Commander. Prioriza estas cartas para tu mazo.</span>
                         </div>
-                        <div class="stat-box">
+                        <div class="stat-box tooltip">
                             <div class="stat-value">${mediumSynergy.length}</div>
                             <div class="stat-label">Media Sinergia</div>
+                            <span class="tooltiptext">Cartas con puntaje entre 5-19. Tienen alguna sinergia o utilidad con tu Commander. Son buenas opciones de relleno para el mazo.</span>
                         </div>
-                        <div class="stat-box">
+                        <div class="stat-box tooltip">
                             <div class="stat-value">${lowSynergy.length}</div>
                             <div class="stat-label">Baja Sinergia</div>
+                            <span class="tooltiptext">Cartas con puntaje 0-4. Poca o ninguna sinergia específica detectada. Pueden ser staples generales o cartas de utilidad básica.</span>
                         </div>
-                        <div class="stat-box">
+                        <div class="stat-box tooltip">
                             <div class="stat-value">${outOfColor.length}</div>
                             <div class="stat-label">Fuera de Color</div>
+                            <span class="tooltiptext">Cartas fuera de la identidad de color de tu Commander. No son legales en este mazo según las reglas de Commander.</span>
                         </div>
                     </div>
             `;
@@ -1417,20 +2029,36 @@
 
             html += '</div>';
 
-            // Filters
+            // Filters with active counter
             html += `
                 <div class="filters">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <label style="margin: 0;">Filtrar por tipo de carta:</label>
+                        <div id="filterCounter" style="background: rgba(243, 156, 18, 0.2); padding: 8px 16px; border-radius: 6px; border: 2px solid #f39c12;">
+                            <strong style="color: #f39c12;">${synergies.length}</strong>
+                            <span style="color: #95a5a6;"> carta${synergies.length !== 1 ? 's' : ''} mostrada${synergies.length !== 1 ? 's' : ''}</span>
+                        </div>
+                    </div>
                     <div class="filter-group">
-                        <label>Filtrar por tipo de carta:</label>
                         <div class="filter-buttons">
                             <button class="filter-btn ${activeTypeFilter === 'all' ? 'active' : ''}" onclick="filterByType('all')">
-                                Todas (${synergies.length})
+                                🔮 Todas (${synergies.length})
                             </button>
-                            ${cardTypes.map(type => `
+                            ${cardTypes.map(type => {
+                                const icons = {
+                                    'creature': '👹',
+                                    'instant': '⚡',
+                                    'sorcery': '🔥',
+                                    'artifact': '⚙️',
+                                    'enchantment': '✨',
+                                    'planeswalker': '🎭',
+                                    'land': '🏔️'
+                                };
+                                return `
                                 <button class="filter-btn ${activeTypeFilter === type.key ? 'active' : ''}" onclick="filterByType('${type.key}')">
-                                    ${type.name} (${type.count})
+                                    ${icons[type.key] || '📜'} ${type.name} (${type.count})
                                 </button>
-                            `).join('')}
+                            `}).join('')}
                         </div>
                     </div>
                 </div>
@@ -1582,6 +2210,15 @@
             const filteredDiv = document.getElementById('filteredResults');
             if (filteredDiv) {
                 filteredDiv.innerHTML = renderFilteredResults(filtered);
+            }
+
+            // Update filter counter
+            const counterDiv = document.getElementById('filterCounter');
+            if (counterDiv) {
+                counterDiv.innerHTML = `
+                    <strong style="color: #f39c12;">${filtered.length}</strong>
+                    <span style="color: #95a5a6;"> carta${filtered.length !== 1 ? 's' : ''} mostrada${filtered.length !== 1 ? 's' : ''}</span>
+                `;
             }
 
             // Update filter buttons
