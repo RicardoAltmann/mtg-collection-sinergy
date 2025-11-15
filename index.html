@@ -851,6 +851,145 @@
             visibility: visible;
             opacity: 1;
         }
+
+        /* Drag & Drop Styles */
+        .drop-zone {
+            border: 3px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .drop-zone:hover {
+            border-color: #f39c12;
+            background: rgba(243, 156, 18, 0.1);
+        }
+
+        .drop-zone.dragover {
+            border-color: #27ae60;
+            background: rgba(39, 174, 96, 0.15);
+            transform: scale(1.02);
+        }
+
+        .drop-zone-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+            opacity: 0.7;
+        }
+
+        .drop-zone-text {
+            color: #e4e4e4;
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .drop-zone-subtext {
+            color: #95a5a6;
+            font-size: 0.9em;
+        }
+
+        .file-input-hidden {
+            display: none;
+        }
+
+        /* Autocomplete Styles */
+        .autocomplete-container {
+            position: relative;
+            margin-bottom: 15px;
+        }
+
+        .autocomplete-input-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+
+        .autocomplete-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #e4e4e4;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .autocomplete-input:focus {
+            outline: none;
+            border-color: #f39c12;
+        }
+
+        .autocomplete-input.loading {
+            background-image: linear-gradient(90deg, rgba(243, 156, 18, 0.1) 25%, transparent 25%, transparent 50%, rgba(243, 156, 18, 0.1) 50%, rgba(243, 156, 18, 0.1) 75%, transparent 75%, transparent);
+            background-size: 20px 20px;
+            animation: loading-stripes 0.5s linear infinite;
+        }
+
+        @keyframes loading-stripes {
+            0% { background-position: 0 0; }
+            100% { background-position: 20px 0; }
+        }
+
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: rgba(26, 26, 46, 0.98);
+            border: 2px solid #f39c12;
+            border-radius: 8px;
+            margin-top: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .autocomplete-item {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: background 0.2s;
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .autocomplete-item:hover,
+        .autocomplete-item.selected {
+            background: rgba(243, 156, 18, 0.2);
+        }
+
+        .autocomplete-item-name {
+            color: #f39c12;
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+
+        .autocomplete-item-type {
+            color: #95a5a6;
+            font-size: 0.85em;
+        }
+
+        .autocomplete-no-results {
+            padding: 20px;
+            text-align: center;
+            color: #95a5a6;
+            font-style: italic;
+        }
+
+        .add-card-btn {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            padding: 12px 20px;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
@@ -970,60 +1109,67 @@
         <!-- Add Cards Tab -->
         <div id="addTab" class="tab-content">
             <div class="input-section">
+                <!-- Quick Add with Autocomplete -->
+                <div style="background: rgba(39, 174, 96, 0.1); border: 2px solid rgba(39, 174, 96, 0.3); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                    <h3 style="color: #27ae60; margin-bottom: 15px;">⚡ Agregar Rápido (con autocompletado)</h3>
+                    <p style="color: #95a5a6; margin-bottom: 15px; font-size: 0.95em;">
+                        Escribe el nombre de una carta y obtén sugerencias en tiempo real desde Scryfall
+                    </p>
+                    <div class="autocomplete-container">
+                        <div class="autocomplete-input-wrapper">
+                            <input
+                                type="text"
+                                id="autocompleteInput"
+                                class="autocomplete-input"
+                                placeholder="Ej: Lightning Bolt, Sol Ring..."
+                                autocomplete="off"
+                            >
+                            <button onclick="addCardFromAutocomplete()" class="add-card-btn">
+                                ➕ Agregar
+                            </button>
+                        </div>
+                        <div id="autocompleteDropdown" class="autocomplete-dropdown hidden"></div>
+                    </div>
+                </div>
+
+                <!-- Drag & Drop File Import -->
                 <div style="background: rgba(52, 152, 219, 0.1); border: 2px solid rgba(52, 152, 219, 0.3); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
-                    <h3 style="color: #3498db; margin-bottom: 15px;">💡 Cómo importar tus cartas</h3>
-                    <div style="display: grid; gap: 15px;">
-                        <div style="display: flex; gap: 10px; align-items: flex-start;">
-                            <span style="color: #3498db; font-size: 1.5em;">1️⃣</span>
-                            <div>
-                                <strong style="color: #e4e4e4;">Una carta por línea</strong>
-                                <p style="margin: 5px 0 0 0; color: #95a5a6; font-size: 0.9em;">
-                                    Escribe o pega cada nombre de carta en una línea separada
-                                </p>
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 10px; align-items: flex-start;">
-                            <span style="color: #3498db; font-size: 1.5em;">2️⃣</span>
-                            <div>
-                                <strong style="color: #e4e4e4;">Nombres en inglés</strong>
-                                <p style="margin: 5px 0 0 0; color: #95a5a6; font-size: 0.9em;">
-                                    Los nombres deben estar en inglés según Scryfall (ej: "Lightning Bolt", no "Relámpago")
-                                </p>
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 10px; align-items: flex-start;">
-                            <span style="color: #3498db; font-size: 1.5em;">3️⃣</span>
-                            <div>
-                                <strong style="color: #e4e4e4;">Detección automática</strong>
-                                <p style="margin: 5px 0 0 0; color: #95a5a6; font-size: 0.9em;">
-                                    El sistema busca las cartas, detecta duplicados y te avisa de errores
-                                </p>
-                            </div>
-                        </div>
+                    <h3 style="color: #3498db; margin-bottom: 15px;">📁 Importar desde Archivo</h3>
+                    <input type="file" id="fileInput" class="file-input-hidden" accept=".csv,.txt" onchange="handleFileSelect(event)">
+                    <div id="dropZone" class="drop-zone" onclick="document.getElementById('fileInput').click()">
+                        <div class="drop-zone-icon">📄</div>
+                        <div class="drop-zone-text">Arrastra un archivo CSV o TXT aquí</div>
+                        <div class="drop-zone-subtext">o haz click para seleccionar</div>
+                    </div>
+                    <div style="margin-top: 10px; padding: 15px; background: rgba(52, 152, 219, 0.1); border-left: 3px solid #3498db; border-radius: 4px;">
+                        <p style="margin: 0 0 8px 0; font-weight: 600; color: #3498db;">✓ Formatos aceptados:</p>
+                        <ul style="list-style: none; padding: 0; margin: 0; color: #95a5a6; font-size: 0.9em;">
+                            <li style="margin: 4px 0;">• Archivo de texto (.txt) con un nombre por línea</li>
+                            <li style="margin: 4px 0;">• CSV (.csv) con columna "name" o primera columna</li>
+                            <li style="margin: 4px 0;">• Exportaciones de Archidekt, Moxfield, etc.</li>
+                        </ul>
                     </div>
                 </div>
 
-                <div class="input-group">
-                    <label for="newCards">
-                        Nombres de cartas (una por línea):
-                        <span style="color: #95a5a6; font-weight: 400; font-size: 0.9em; margin-left: 10px;">
-                            <span class="tooltip">
-                                ❓
-                                <span class="tooltiptext">Pega una lista de nombres de cartas. Ejemplo:<br>Sol Ring<br>Lightning Bolt<br>Counterspell</span>
-                            </span>
-                        </span>
-                    </label>
-                    <textarea id="newCards" placeholder="Sol Ring&#10;Lightning Bolt&#10;Counterspell&#10;Command Tower&#10;Arcane Signet&#10;..."></textarea>
-                    <div style="margin-top: 10px; padding: 15px; background: rgba(39, 174, 96, 0.1); border-left: 3px solid #27ae60; border-radius: 4px;">
-                        <p style="margin: 0; font-size: 0.9em; color: #2ecc71;">
-                            <strong>✓ Tip:</strong> Puedes copiar listas desde archivos de texto, exportaciones de Archidekt, Moxfield, o cualquier formato de lista simple.
-                        </p>
+                <!-- Manual Text Import -->
+                <div style="background: rgba(243, 156, 18, 0.1); border: 2px solid rgba(243, 156, 18, 0.3); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                    <h3 style="color: #f39c12; margin-bottom: 15px;">✍️ Importación Manual</h3>
+                    <div class="input-group">
+                        <label for="newCards">
+                            Nombres de cartas (una por línea):
+                        </label>
+                        <textarea id="newCards" placeholder="Sol Ring&#10;Lightning Bolt&#10;Counterspell&#10;Command Tower&#10;Arcane Signet&#10;..."></textarea>
+                        <div style="margin-top: 10px; padding: 15px; background: rgba(39, 174, 96, 0.1); border-left: 3px solid #27ae60; border-radius: 4px;">
+                            <p style="margin: 0; font-size: 0.9em; color: #2ecc71;">
+                                <strong>✓ Tip:</strong> Puedes pegar listas directamente desde archivos de texto o exportaciones de otras herramientas.
+                            </p>
+                        </div>
                     </div>
-                </div>
 
-                <button onclick="addToCollection()" id="addBtn">
-                    ➕ Agregar a Colección
-                </button>
+                    <button onclick="addToCollection()" id="addBtn">
+                        ➕ Agregar a Colección
+                    </button>
+                </div>
             </div>
 
             <div id="addResults"></div>
@@ -2287,6 +2433,326 @@
                     ${reasonsList}
                 </div>
             `;
+        }
+
+        // ==================== DRAG & DROP FUNCTIONALITY ====================
+
+        const dropZone = document.getElementById('dropZone');
+
+        if (dropZone) {
+            // Prevent default drag behaviors
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+                document.body.addEventListener(eventName, preventDefaults, false);
+            });
+
+            // Highlight drop zone when item is dragged over it
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, highlight, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, unhighlight, false);
+            });
+
+            // Handle dropped files
+            dropZone.addEventListener('drop', handleDrop, false);
+        }
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        function highlight(e) {
+            dropZone.classList.add('dragover');
+        }
+
+        function unhighlight(e) {
+            dropZone.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            if (files.length === 0) return;
+
+            const file = files[0];
+            const fileName = file.name.toLowerCase();
+
+            if (!fileName.endsWith('.csv') && !fileName.endsWith('.txt')) {
+                alert('Por favor selecciona un archivo .csv o .txt');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const contents = e.target.result;
+                const cardNames = parseFileContents(contents, fileName);
+
+                if (cardNames.length > 0) {
+                    document.getElementById('newCards').value = cardNames.join('\n');
+                    // Scroll to manual import section
+                    document.querySelector('#addTab .input-section').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                    // Show success message
+                    const resultsDiv = document.getElementById('addResults');
+                    resultsDiv.innerHTML = `
+                        <div class="success-message" style="margin-bottom: 20px;">
+                            <strong>✓ Archivo cargado exitosamente</strong><br>
+                            ${cardNames.length} carta${cardNames.length !== 1 ? 's' : ''} detectada${cardNames.length !== 1 ? 's' : ''} en el archivo.<br>
+                            Revisa la lista abajo y haz click en "Agregar a Colección" para importarlas.
+                        </div>
+                    `;
+                } else {
+                    alert('No se pudieron extraer nombres de cartas del archivo.');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function parseFileContents(contents, fileName) {
+            const lines = contents.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+
+            if (fileName.endsWith('.csv')) {
+                return parseCSV(lines);
+            } else {
+                // Plain text file - one card per line
+                // Remove common prefixes like "1x ", "4x ", etc.
+                return lines.map(line => {
+                    // Remove quantity prefix (e.g., "4x ", "1 ")
+                    return line.replace(/^\d+x?\s+/, '').trim();
+                }).filter(name => name.length > 0);
+            }
+        }
+
+        function parseCSV(lines) {
+            if (lines.length === 0) return [];
+
+            // Try to detect delimiter
+            const firstLine = lines[0];
+            const delimiter = firstLine.includes('\t') ? '\t' : ',';
+
+            // Parse header row
+            const headers = firstLine.split(delimiter).map(h => h.trim().toLowerCase());
+
+            // Find name column index
+            let nameColumnIndex = headers.indexOf('name');
+            if (nameColumnIndex === -1) nameColumnIndex = headers.indexOf('card name');
+            if (nameColumnIndex === -1) nameColumnIndex = headers.indexOf('cardname');
+            if (nameColumnIndex === -1) nameColumnIndex = headers.indexOf('card');
+
+            const cardNames = [];
+
+            // If no header found, assume first column is card name
+            if (nameColumnIndex === -1) {
+                nameColumnIndex = 0;
+                // Include first line as data
+                for (let i = 0; i < lines.length; i++) {
+                    const columns = lines[i].split(delimiter);
+                    if (columns.length > nameColumnIndex) {
+                        let cardName = columns[nameColumnIndex].trim();
+                        // Remove quotes if present
+                        cardName = cardName.replace(/^["']|["']$/g, '');
+                        // Remove quantity prefix
+                        cardName = cardName.replace(/^\d+x?\s+/, '');
+                        if (cardName.length > 0) {
+                            cardNames.push(cardName);
+                        }
+                    }
+                }
+            } else {
+                // Skip header row, start from line 1
+                for (let i = 1; i < lines.length; i++) {
+                    const columns = lines[i].split(delimiter);
+                    if (columns.length > nameColumnIndex) {
+                        let cardName = columns[nameColumnIndex].trim();
+                        // Remove quotes if present
+                        cardName = cardName.replace(/^["']|["']$/g, '');
+                        // Remove quantity prefix
+                        cardName = cardName.replace(/^\d+x?\s+/, '');
+                        if (cardName.length > 0) {
+                            cardNames.push(cardName);
+                        }
+                    }
+                }
+            }
+
+            return cardNames;
+        }
+
+        // ==================== AUTOCOMPLETE FUNCTIONALITY ====================
+
+        const autocompleteInput = document.getElementById('autocompleteInput');
+        const autocompleteDropdown = document.getElementById('autocompleteDropdown');
+        let autocompleteTimeout;
+        let selectedSuggestionIndex = -1;
+        let currentSuggestions = [];
+
+        if (autocompleteInput) {
+            autocompleteInput.addEventListener('input', handleAutocompleteInput);
+            autocompleteInput.addEventListener('keydown', handleAutocompleteKeydown);
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.autocomplete-container')) {
+                    hideAutocompleteDropdown();
+                }
+            });
+        }
+
+        function handleAutocompleteInput(e) {
+            const query = e.target.value.trim();
+
+            // Clear previous timeout
+            clearTimeout(autocompleteTimeout);
+
+            if (query.length < 2) {
+                hideAutocompleteDropdown();
+                return;
+            }
+
+            // Show loading state
+            autocompleteInput.classList.add('loading');
+
+            // Debounce API calls - wait 300ms after user stops typing
+            autocompleteTimeout = setTimeout(() => {
+                fetchAutocompleteSuggestions(query);
+            }, 300);
+        }
+
+        async function fetchAutocompleteSuggestions(query) {
+            try {
+                const response = await fetch(`https://api.scryfall.com/cards/autocomplete?q=${encodeURIComponent(query)}`);
+
+                if (!response.ok) {
+                    throw new Error('Error fetching suggestions');
+                }
+
+                const data = await response.json();
+                autocompleteInput.classList.remove('loading');
+
+                if (data.data && data.data.length > 0) {
+                    currentSuggestions = data.data;
+                    displayAutocompleteSuggestions(data.data);
+                } else {
+                    showNoResults();
+                }
+            } catch (error) {
+                console.error('Autocomplete error:', error);
+                autocompleteInput.classList.remove('loading');
+                hideAutocompleteDropdown();
+            }
+        }
+
+        function displayAutocompleteSuggestions(suggestions) {
+            selectedSuggestionIndex = -1;
+
+            let html = '';
+            suggestions.forEach((cardName, index) => {
+                html += `
+                    <div class="autocomplete-item" data-index="${index}" onclick="selectSuggestion('${cardName.replace(/'/g, "\\'")}')">
+                        <div class="autocomplete-item-name">${cardName}</div>
+                    </div>
+                `;
+            });
+
+            autocompleteDropdown.innerHTML = html;
+            autocompleteDropdown.classList.remove('hidden');
+        }
+
+        function showNoResults() {
+            autocompleteDropdown.innerHTML = '<div class="autocomplete-no-results">No se encontraron cartas</div>';
+            autocompleteDropdown.classList.remove('hidden');
+        }
+
+        function hideAutocompleteDropdown() {
+            autocompleteDropdown.classList.add('hidden');
+            autocompleteDropdown.innerHTML = '';
+            selectedSuggestionIndex = -1;
+            currentSuggestions = [];
+        }
+
+        function handleAutocompleteKeydown(e) {
+            const items = autocompleteDropdown.querySelectorAll('.autocomplete-item');
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, items.length - 1);
+                updateSelectedSuggestion(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, -1);
+                updateSelectedSuggestion(items);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (selectedSuggestionIndex >= 0 && selectedSuggestionIndex < currentSuggestions.length) {
+                    selectSuggestion(currentSuggestions[selectedSuggestionIndex]);
+                } else {
+                    addCardFromAutocomplete();
+                }
+            } else if (e.key === 'Escape') {
+                hideAutocompleteDropdown();
+            }
+        }
+
+        function updateSelectedSuggestion(items) {
+            items.forEach((item, index) => {
+                if (index === selectedSuggestionIndex) {
+                    item.classList.add('selected');
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+        }
+
+        function selectSuggestion(cardName) {
+            autocompleteInput.value = cardName;
+            hideAutocompleteDropdown();
+        }
+
+        async function addCardFromAutocomplete() {
+            const cardName = autocompleteInput.value.trim();
+
+            if (!cardName) {
+                return;
+            }
+
+            // Add to manual textarea
+            const textarea = document.getElementById('newCards');
+            const currentValue = textarea.value.trim();
+
+            if (currentValue) {
+                textarea.value = currentValue + '\n' + cardName;
+            } else {
+                textarea.value = cardName;
+            }
+
+            // Clear autocomplete input
+            autocompleteInput.value = '';
+            hideAutocompleteDropdown();
+
+            // Show success feedback
+            const resultsDiv = document.getElementById('addResults');
+            resultsDiv.innerHTML = `
+                <div class="success-message" style="margin-bottom: 20px;">
+                    <strong>✓ "${cardName}" agregada a la lista</strong><br>
+                    Haz click en "Agregar a Colección" para importarla.
+                </div>
+            `;
+
+            // Auto-scroll to manual section
+            textarea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
     </script>
 </body>
