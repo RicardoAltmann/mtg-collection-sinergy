@@ -159,6 +159,15 @@ async function removeCardFromCollection(supabaseClient, cardName) {
 
 // API Routes
 
+// Get configuration (Supabase credentials)
+app.get('/api/config', (req, res) => {
+    res.json({
+        supabaseUrl: process.env.SUPABASE_URL || null,
+        supabaseAnonKey: process.env.SUPABASE_ANON_KEY || null,
+        useAuth: USE_SUPABASE
+    });
+});
+
 // Get a single card from Scryfall
 app.get('/api/card/:name', async (req, res) => {
     try {
