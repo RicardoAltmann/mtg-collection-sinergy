@@ -63,9 +63,14 @@ async function rateLimitedFetch(url) {
 // Collection storage functions - work with both Supabase and local file
 async function loadCollection(supabaseClient) {
     if (USE_SUPABASE && supabaseClient) {
+        // Get current user to filter by user_id
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
         const { data, error } = await supabaseClient
             .from('cards')
             .select('card_data')
+            .eq('user_id', user.id)  // CRITICAL: Filter by user_id for data isolation
             .order('created_at', { ascending: true });
 
         if (error) throw error;
@@ -254,6 +259,8 @@ app.post('/api/collection', async (req, res) => {
                     const data = await response.json();
                     await addCardToCollection(client, data);
                     results.push(data.name);
+                    // CRITICAL: Update in-memory collection to prevent duplicates in same request
+                    collection.push(data);
                 } else {
                     errors.push(cardName);
                 }
