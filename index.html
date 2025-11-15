@@ -108,9 +108,15 @@
             font-family: var(--font-body);
             background: linear-gradient(135deg, var(--color-bg-primary) 0%, var(--color-bg-secondary) 50%, var(--color-bg-tertiary) 100%);
             color: var(--text-primary);
-            padding: var(--space-lg);
+            padding: var(--space-md);
             min-height: 100vh;
             position: relative;
+        }
+
+        @media (min-width: 768px) {
+            body {
+                padding: var(--space-lg);
+            }
         }
 
         /* Premium background effect */
@@ -139,9 +145,9 @@
         h1 {
             font-family: var(--font-display);
             text-align: center;
-            margin-bottom: var(--space-xl);
+            margin-bottom: var(--space-lg);
             color: var(--text-gold);
-            font-size: var(--font-size-5xl);
+            font-size: var(--font-size-3xl);
             font-weight: var(--font-weight-extrabold);
             letter-spacing: 0.02em;
             text-shadow:
@@ -152,7 +158,7 @@
             -webkit-text-fill-color: transparent;
             background-clip: text;
             position: relative;
-            padding: var(--space-md) 0;
+            padding: var(--space-sm) 0;
         }
 
         h1::after {
@@ -161,10 +167,28 @@
             bottom: 0;
             left: 50%;
             transform: translateX(-50%);
-            width: 200px;
+            width: 150px;
             height: 2px;
             background: linear-gradient(90deg, transparent, var(--color-primary-gold), transparent);
             box-shadow: var(--glow-gold);
+        }
+
+        /* Larger screens */
+        @media (min-width: 768px) {
+            h1 {
+                font-size: var(--font-size-4xl);
+                margin-bottom: var(--space-xl);
+            }
+
+            h1::after {
+                width: 200px;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            h1 {
+                font-size: var(--font-size-5xl);
+            }
         }
 
         h2 {
@@ -181,9 +205,9 @@
         /* Enhanced Glass Morphism Sections */
         .input-section {
             background: var(--glass-bg);
-            padding: var(--space-xl);
-            border-radius: var(--radius-xl);
-            margin-bottom: var(--space-xl);
+            padding: var(--space-lg);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--space-lg);
             backdrop-filter: blur(20px) saturate(180%);
             border: 1px solid var(--glass-border);
             box-shadow:
@@ -192,6 +216,14 @@
             position: relative;
             overflow: hidden;
             transition: all var(--transition-slow);
+        }
+
+        @media (min-width: 768px) {
+            .input-section {
+                padding: var(--space-xl);
+                border-radius: var(--radius-xl);
+                margin-bottom: var(--space-xl);
+            }
         }
 
         .input-section::before {
@@ -1483,9 +1515,9 @@
         .pricing-teaser {
             background: linear-gradient(135deg, rgba(212, 175, 55, 0.08) 0%, rgba(184, 115, 51, 0.08) 100%);
             border: 2px solid var(--glass-border-premium);
-            border-radius: var(--radius-xl);
-            padding: var(--space-2xl);
-            margin: var(--space-3xl) 0;
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            margin: var(--space-xl) 0;
             backdrop-filter: blur(20px);
             box-shadow:
                 var(--shadow-lg),
@@ -1493,6 +1525,14 @@
                 0 0 40px rgba(212, 175, 55, 0.15);
             position: relative;
             overflow: hidden;
+        }
+
+        @media (min-width: 768px) {
+            .pricing-teaser {
+                border-radius: var(--radius-xl);
+                padding: var(--space-2xl);
+                margin: var(--space-3xl) 0;
+            }
         }
 
         .pricing-teaser::before {
@@ -1507,7 +1547,13 @@
 
         .pricing-teaser-header {
             text-align: center;
-            margin-bottom: var(--space-2xl);
+            margin-bottom: var(--space-lg);
+        }
+
+        @media (min-width: 768px) {
+            .pricing-teaser-header {
+                margin-bottom: var(--space-2xl);
+            }
         }
 
         .pricing-teaser-badge {
@@ -1525,12 +1571,24 @@
         }
 
         .pricing-teaser h3 {
-            font-size: var(--font-size-3xl);
+            font-size: var(--font-size-xl);
             margin-bottom: var(--space-sm);
             background: linear-gradient(135deg, var(--color-primary-gold), var(--color-accent-gold));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+        }
+
+        @media (min-width: 768px) {
+            .pricing-teaser h3 {
+                font-size: var(--font-size-2xl);
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .pricing-teaser h3 {
+                font-size: var(--font-size-3xl);
+            }
         }
 
         .pricing-teaser-subtitle {
