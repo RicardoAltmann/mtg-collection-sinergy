@@ -1340,6 +1340,9 @@
                             <li style="margin: 4px 0;">• Exportaciones de Archidekt, Moxfield, etc.</li>
                         </ul>
                     </div>
+                    <button onclick="downloadTemplate()" style="margin-top: 15px; background: rgba(52, 152, 219, 0.2); border: 1px solid rgba(52, 152, 219, 0.5); color: #3498db; padding: 10px 20px; border-radius: var(--radius-md); cursor: pointer; font-weight: 500; width: 100%; transition: all var(--transition-fast);" onmouseover="this.style.background='rgba(52, 152, 219, 0.3)'" onmouseout="this.style.background='rgba(52, 152, 219, 0.2)'">
+                        📥 Descargar Plantilla CSV
+                    </button>
                 </div>
 
                 <!-- Manual Text Import -->
@@ -2800,6 +2803,34 @@
             }
 
             return cardNames;
+        }
+
+        function downloadTemplate() {
+            // Create CSV content with header and example cards
+            const csvContent = `name
+Sol Ring
+Lightning Bolt
+Counterspell
+Command Tower
+Arcane Signet`;
+
+            // Create a Blob with the CSV content
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+            // Create a temporary download link
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'plantilla_cartas.csv');
+            link.style.visibility = 'hidden';
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            // Clean up the URL object
+            URL.revokeObjectURL(url);
         }
 
         // ==================== AUTOCOMPLETE FUNCTIONALITY ====================
