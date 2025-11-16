@@ -2188,11 +2188,58 @@
             }
         }
 
+        // Staples categorizados para EDH/Commander
+        const STAPLES = {
+            ramp: ['sol ring', 'arcane signet', 'fellwar stone', 'commander sphere', 'chromatic lantern',
+                   'jeweled lotus', 'mana crypt', 'mana vault', 'grim monolith', 'basalt monolith',
+                   'worn powerstone', 'thran dynamo', 'gilded lotus', 'coalition relic', 'sisay\'s ring',
+                   'cultivate', 'kodama\'s reach', 'rampant growth', 'farseek', 'nature\'s lore',
+                   'three visits', 'skyshroud claim', 'explosive vegetation'],
+            card_draw: ['rhystic study', 'mystic remora', 'esper sentinel', 'sylvan library', 'phyrexian arena',
+                       'necropotence', 'read the bones', 'night\'s whisper', 'sign in blood', 'harmonize',
+                       'elemental bond', 'guardian project', 'the great henge'],
+            removal: ['path to exile', 'swords to plowshares', 'generous gift', 'beast within',
+                     'chaos warp', 'terminate', 'anguished unmaking', 'vindicate', 'assassin\'s trophy',
+                     'mortify', 'putrefy', 'abrupt decay', 'nature\'s claim', 'disenchant',
+                     'naturalize', 'return to dust', 'wear // tear', 'krosan grip'],
+            board_wipes: ['wrath of god', 'damnation', 'blasphemous act', 'toxic deluge', 'cyclonic rift',
+                         'merciless eviction', 'austere command', 'vandalblast', 'farewell'],
+            tutors: ['demonic tutor', 'vampiric tutor', 'mystical tutor', 'worldly tutor', 'enlightened tutor',
+                    'gamble', 'diabolic tutor', 'beseech the queen', 'congregation at dawn'],
+            counterspells: ['counterspell', 'swan song', 'negate', 'arcane denial', 'dispel', 'spell pierce',
+                           'force of will', 'pact of negation', 'mana drain', 'fierce guardianship'],
+            lands: ['command tower', 'exotic orchard', 'reflecting pool', 'city of brass', 'mana confluence',
+                   'command beacon', 'ancient tomb', 'reliquary tower', 'temple of the false god'],
+            protection: ['heroic intervention', 'teferi\'s protection', 'boros charm', 'flawless maneuver',
+                        'lightning greaves', 'swiftfoot boots', 'champion\'s helm'],
+            recursion: ['eternal witness', 'regrowth', 'noxious revival', 'reanimate', 'animate dead',
+                       'necromancy', 'dance of the dead', 'sun titan'],
+            combos: ['thassa\'s oracle', 'demonic consultation', 'tainted pact', 'isochron scepter',
+                    'dramatic reversal', 'underworld breach', 'worldgorger dragon', 'animate dead']
+        };
+
+        // Combos conocidos de dos cartas
+        const KNOWN_COMBOS = {
+            'thassa\'s oracle': ['demonic consultation', 'tainted pact'],
+            'demonic consultation': ['thassa\'s oracle', 'laboratory maniac'],
+            'tainted pact': ['thassa\'s oracle', 'laboratory maniac'],
+            'isochron scepter': ['dramatic reversal'],
+            'dramatic reversal': ['isochron scepter'],
+            'worldgorger dragon': ['animate dead', 'necromancy', 'dance of the dead'],
+            'animate dead': ['worldgorger dragon'],
+            'kiki-jiki, mirror breaker': ['zealous conscripts', 'deceiver exarch', 'pestermite'],
+            'splinter twin': ['zealous conscripts', 'deceiver exarch', 'pestermite'],
+            'mikaeus, the unhallowed': ['walking ballista', 'triskelion'],
+            'walking ballista': ['mikaeus, the unhallowed', 'heliod, sun-crowned'],
+            'heliod, sun-crowned': ['walking ballista']
+        };
+
         function calculateSynergies() {
             const commanderColors = commanderData.color_identity || [];
             const commanderText = (commanderData.oracle_text || '').toLowerCase();
             const commanderTypes = (commanderData.type_line || '').toLowerCase();
             const commanderKeywords = commanderData.keywords || [];
+            const commanderCMC = commanderData.cmc || 0;
 
             return cardCollection.map(card => {
                 const reasons = [];
@@ -2208,6 +2255,42 @@
 
                 const cardText = (card.oracle_text || '').toLowerCase();
                 const cardTypes = (card.type_line || '').toLowerCase();
+                const cardCMC = card.cmc || 0;
+                const cardName = card.name.toLowerCase();
+
+                // === MEJORA 1: ANÁLISIS DE CURVA DE MANA ===
+                // Early game (CMC 0-2): ramp, early interaction
+                if (cardCMC <= 2 && colorMatch) {
+                    if (cardText.includes('mana') || cardTypes.includes('artifact') &&
+                        (cardText.includes('add') || cardText.includes('tap'))) {
+                        score += 8;
+                        reasons.push('✓ Ramp temprano (CMC ≤2)');
+                    } else if (cardText.includes('destroy') || cardText.includes('counter') ||
+                               cardText.includes('remove') || cardText.includes('exile')) {
+                        score += 5;
+                        reasons.push('✓ Interacción temprana (CMC ≤2)');
+                    }
+                }
+
+                // Mid game (CMC 3-5): value engines
+                if (cardCMC >= 3 && cardCMC <= 5 && colorMatch) {
+                    if (cardText.includes('draw') || cardText.includes('search')) {
+                        score += 3;
+                        reasons.push('✓ Motor de valor mid-game');
+                    }
+                }
+
+                // Late game payoff (CMC 6+): only valuable if deck can ramp
+                if (cardCMC >= 6 && colorMatch) {
+                    if (commanderText.includes('land') || commanderText.includes('mana') ||
+                        commanderText.includes('ramp')) {
+                        score += 5;
+                        reasons.push('✓ Payoff late-game para deck con ramp');
+                    } else {
+                        score -= 3;
+                        reasons.push('⚠ Carta cara sin clara sinergia de ramp');
+                    }
+                }
 
                 // Keyword synergies
                 commanderKeywords.forEach(keyword => {
@@ -2242,7 +2325,7 @@
                 }
 
                 // Ramp synergy
-                if ((commanderText.includes('land') || commanderTypes.includes('land')) && 
+                if ((commanderText.includes('land') || commanderTypes.includes('land')) &&
                     (cardText.includes('search') && cardText.includes('land'))) {
                     score += 12;
                     reasons.push('✓ Rampeo de tierras');
@@ -2274,18 +2357,69 @@
                 }
 
                 // Removal/Protection
-                if (cardText.includes('destroy') || cardText.includes('exile') || cardText.includes('counter') || 
+                if (cardText.includes('destroy') || cardText.includes('exile') || cardText.includes('counter') ||
                     cardText.includes('protection') || cardText.includes('indestructible')) {
                     score += 5;
                     reasons.push('✓ Remoción o protección');
                 }
 
-                // Staples get bonus points
-                const staples = ['sol ring', 'arcane signet', 'command tower', 'path to exile', 
-                                'swords to plowshares', 'counterspell', 'lightning bolt'];
-                if (staples.includes(card.name.toLowerCase())) {
-                    score += 15;
-                    reasons.push('✓ Staple de formato');
+                // === MEJORA 2: ANTI-SINERGIAS ===
+                // Board wipes que matan al comandante
+                if (cardText.includes('destroy all creatures') || cardText.includes('exile all creatures') ||
+                    cardText.includes('-x/-x') && cardText.includes('all')) {
+                    if (commanderTypes.includes('creature')) {
+                        // Check if it's asymmetric (spares our commander)
+                        const isAsymmetric = cardText.includes('you control') ||
+                                           cardText.includes('target opponent') ||
+                                           cardText.includes('choose');
+                        if (!isAsymmetric) {
+                            score -= 8;
+                            reasons.push('⚠ Board wipe que destruye tu comandante');
+                        }
+                    }
+                }
+
+                // Nonbo: Stax pieces contra nuestro plan
+                if (cardText.includes('can\'t cast') || cardText.includes('can\'t activate')) {
+                    if (commanderText.includes('cast') || commanderText.includes('activate')) {
+                        score -= 5;
+                        reasons.push('⚠ Puede frenar tu estrategia');
+                    }
+                }
+
+                // === MEJORA 3: STAPLES CATEGORIZADOS ===
+                let isStaple = false;
+                for (const [category, cards] of Object.entries(STAPLES)) {
+                    if (cards.includes(cardName)) {
+                        isStaple = true;
+                        score += 15;
+                        reasons.push(`✓ Staple de formato (${category})`);
+                        break;
+                    }
+                }
+
+                // === MEJORA 4: DETECCIÓN DE COMBOS ===
+                if (KNOWN_COMBOS[cardName]) {
+                    const comboPieces = KNOWN_COMBOS[cardName];
+                    const hasOtherPiece = cardCollection.some(c =>
+                        comboPieces.includes(c.name.toLowerCase())
+                    );
+                    if (hasOtherPiece) {
+                        score += 25;
+                        reasons.push(`✓ Combo conocido: ${comboPieces.join(' + ')}`);
+                    } else {
+                        score += 8;
+                        reasons.push(`✓ Pieza de combo (necesita: ${comboPieces.join(' / ')})`);
+                    }
+                }
+
+                // Bonus: Comandante es parte del combo
+                const commanderNameLower = (commanderData.name || '').toLowerCase();
+                if (KNOWN_COMBOS[commanderNameLower]) {
+                    if (KNOWN_COMBOS[commanderNameLower].includes(cardName)) {
+                        score += 30;
+                        reasons.push('✓ Combo directo con tu comandante!');
+                    }
                 }
 
                 return {
