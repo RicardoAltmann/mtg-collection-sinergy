@@ -5,7 +5,7 @@
  */
 
 import { logger } from '../utils/logger.js';
-import { countColorPips, extractCreatureTypes } from '../utils/helpers.js';
+import { countColorPips, extractCreatureTypes, isPermanentType } from '../utils/helpers.js';
 import { STAPLES, KNOWN_COMBOS, ARCHETYPE_WEIGHTS } from '../utils/constants.js';
 import { fetchCardData } from '../api/scryfall.js';
 import { loadCollection, getCollectionData } from '../api/collection.js';
@@ -14,6 +14,7 @@ import { getCurrentUser, isAuthEnabled } from '../api/supabase.js';
 import { detectArchetype, detectCardRole, analyzeCollectionBalance } from './archetype.js';
 import { detectConceptSynergies, detectAdvancedAntiSynergies } from './concepts.js';
 import { displayResults, setCommanderData } from '../components/results.js';
+import { getCardFeedbackAdjustment, loadFeedbackPreferences } from '../utils/feedback.js';
 
 // Global state for synergy analysis
 let commanderData = null;
@@ -101,6 +102,8 @@ export function calculateSynergies(edhrecData = null) {
     const commanderTypes = (commanderData.type_line || '').toLowerCase();
     const commanderKeywords = commanderData.keywords || [];
     const commanderCMC = commanderData.cmc || 0;
+    const feedbackConfig = loadFeedbackPreferences();
+    const permanentTypes = feedbackConfig.permanentTypes;
 
     // Detect archetype of the commander
     const archetype = detectArchetype(commanderData);
@@ -308,12 +311,17 @@ export function calculateSynergies(edhrecData = null) {
         // Commanders that count permanents of a color
         commanderColors.forEach(color => {
             const colorName = {W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green'}[color];
-            if (colorName && commanderText.includes(colorName) &&
-                (commanderText.includes('permanent') || commanderText.includes('spell'))) {
-                if (cardColors.includes(color)) {
-                    score += 4;
-                    reasons.push(`✓ Permanente ${colorName} para habilidad del comandante`);
-                }
+            if (!colorName || !cardColors.includes(color)) return;
+
+            const countsPermanents = commanderText.includes(colorName) && commanderText.includes('permanent');
+            const countsSpells = commanderText.includes(colorName) && commanderText.includes('spell');
+
+            if (countsPermanents && isPermanentType(cardTypes, permanentTypes)) {
+                score += feedbackConfig?.weights?.coloredPermanent ?? 4;
+                reasons.push(`✓ Permanente ${colorName} para habilidad del comandante`);
+            } else if (countsSpells && !isPermanentType(cardTypes, permanentTypes)) {
+                score += 3;
+                reasons.push(`✓ Hechizo ${colorName} que escala la habilidad del comandante`);
             }
         });
 
@@ -359,6 +367,14 @@ export function calculateSynergies(edhrecData = null) {
                     reasons.push(`⚠ Rol menos útil para ${archetype}: ${cardRole} (${change})`);
                 }
             }
+        }
+
+        // Fold in user feedback without requiring a per-card form
+        const feedbackAdjustment = getCardFeedbackAdjustment(cardName);
+        if (feedbackAdjustment.adjustment !== 0) {
+            score += feedbackAdjustment.adjustment;
+            const sentiment = feedbackAdjustment.adjustment > 0 ? '👍 Feedback positivo' : '👎 Feedback negativo';
+            reasons.push(`${sentiment} (${feedbackAdjustment.totalVotes} votos)`);
         }
 
         return {

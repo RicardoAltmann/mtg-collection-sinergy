@@ -395,6 +395,49 @@ button:disabled {
     color: var(--text-accent);
 }
 
+.card-feedback {
+    margin-top: var(--space-md);
+    padding: var(--space-sm) 0;
+    border-top: 1px solid var(--glass-border);
+}
+
+.feedback-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+}
+
+.feedback-buttons {
+    display: inline-flex;
+    gap: 8px;
+}
+
+.feedback-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-full);
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    color: var(--text-primary);
+    font-size: 16px;
+}
+
+.feedback-btn:hover {
+    border-color: var(--glass-border-accent);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.feedback-status {
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .stats {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

@@ -45,7 +45,7 @@ import {
     handleFileSelect,
     downloadTemplate
 } from './components/fileImport.js';
-import { filterByType, toggleViewMode } from './components/results.js';
+import { filterByType, toggleViewMode, handleCardFeedback } from './components/results.js';
 import { showOnboarding, closeOnboarding, showDemoModeMessage } from './components/onboarding.js';
 import { addCards } from './components/addCards.js';
 import { initAdmin } from './components/admin.js';
@@ -134,6 +134,7 @@ function setupGlobalFunctions() {
     window.filterByTypeUI = filterByType;
     window.toggleCollapseUI = toggleCollapse;
     window.toggleViewModeUI = toggleViewMode;
+    window.handleCardFeedbackUI = handleCardFeedback;
 
     // Autocomplete functions
     window.selectSuggestionFromAutocomplete = selectSuggestion;

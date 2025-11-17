@@ -3,6 +3,8 @@
  * @module utils/helpers
  */
 
+export const BASE_PERMANENT_TYPES = ['artifact', 'battle', 'creature', 'enchantment', 'land', 'planeswalker'];
+
 /**
  * Extract creature types from a card's type line
  * Searches for common creature types in Magic: The Gathering
@@ -21,6 +23,18 @@ export function extractCreatureTypes(typeString) {
         'merfolk', 'elemental', 'beast', 'spirit', 'artifact', 'enchantment'
     ];
     return commonTypes.filter(type => typeString.includes(type));
+}
+
+/**
+ * Determine whether a card type line represents a permanent.
+ *
+ * @param {string} typeLine - Card type line to inspect
+ * @param {string[]} [permanentTypes=BASE_PERMANENT_TYPES] - Allowed permanent types
+ * @returns {boolean} True if the type line contains a permanent type
+ */
+export function isPermanentType(typeLine, permanentTypes = BASE_PERMANENT_TYPES) {
+    const normalized = (typeLine || '').toLowerCase();
+    return permanentTypes.some(type => normalized.includes(type));
 }
 
 /**
