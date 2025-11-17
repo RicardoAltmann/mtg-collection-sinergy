@@ -6,7 +6,7 @@
  * Usage:
  *   node scripts/make-first-admin.js [email]
  *
- * If no email is provided, defaults to ricardo.altmann@gmail.com
+ * You must provide an email as the first argument
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -17,7 +17,7 @@ dotenv.config();
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const DEFAULT_ADMIN_EMAIL = 'ricardo.altmann@gmail.com';
+const DEFAULT_ADMIN_EMAIL = process.env.ADMIN_EMAIL || null;
 
 async function makeFirstAdmin() {
     // Validate environment variables
@@ -31,6 +31,13 @@ async function makeFirstAdmin() {
 
     // Get email from command line or use default
     const targetEmail = process.argv[2] || DEFAULT_ADMIN_EMAIL;
+
+    if (!targetEmail) {
+        console.error('❌ Error: Email is required');
+        console.error('Usage: node scripts/make-first-admin.js your-email@example.com');
+        console.error('Or set ADMIN_EMAIL in your .env file');
+        process.exit(1);
+    }
 
     console.log('🔧 Making first admin...');
     console.log(`📧 Target email: ${targetEmail}`);

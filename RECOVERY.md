@@ -46,21 +46,21 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 El proyecto incluye un script automatizado para restaurar privilegios de admin:
 
 ```bash
-# Usar el email por defecto (ricardo.altmann@gmail.com)
-npm run admin:make-first
-
-# O especificar un email diferente
+# Especificar tu email
 node scripts/make-first-admin.js tu-email@ejemplo.com
+
+# O editar el script para cambiar el email por defecto
+npm run admin:make-first
 ```
 
 **Salida esperada:**
 
 ```
 🔧 Making first admin...
-📧 Target email: ricardo.altmann@gmail.com
+📧 Target email: tu-email@ejemplo.com
 
 🔍 Searching for user...
-✓ Found user: ricardo.altmann@gmail.com
+✓ Found user: tu-email@ejemplo.com
   User ID: abc123...
   Created: 2024-01-01...
 
@@ -68,7 +68,7 @@ node scripts/make-first-admin.js tu-email@ejemplo.com
 ⚡ Granting admin privileges...
 
 ✅ SUCCESS!
-🎉 ricardo.altmann@gmail.com is now an admin!
+🎉 tu-email@ejemplo.com is now an admin!
 
 The user can now:
   - View all users and their collections
@@ -107,11 +107,11 @@ Durante la migración del esquema de base de datos, las cartas originales fueron
 ### Paso 1: Ejecutar el Script de Recuperación
 
 ```bash
-# Usar el email por defecto (ricardo.altmann@gmail.com)
-npm run restore:collection
-
-# O especificar un email diferente
+# Especificar tu email
 node scripts/restore-collection.js tu-email@ejemplo.com
+
+# O editar el script para cambiar el email por defecto
+npm run restore:collection
 ```
 
 Este script generará el **SQL necesario** para recuperar tus cartas.
