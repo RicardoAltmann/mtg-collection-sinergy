@@ -201,7 +201,14 @@ function initEventListeners() {
         // Logout button
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) {
-            logoutBtn.addEventListener('click', logout);
+            logoutBtn.addEventListener('click', () => {
+                // Close dropdown before logout
+                const dropdown = document.getElementById('userDropdown');
+                if (dropdown) {
+                    dropdown.classList.add('hidden');
+                }
+                logout();
+            });
         }
 
         // Analyze button

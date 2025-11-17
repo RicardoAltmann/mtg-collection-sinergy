@@ -639,17 +639,105 @@ button:disabled {
     font-size: var(--font-size-sm);
 }
 
-.logout-btn {
-    background: var(--color-error);
-    padding: 4px var(--space-sm);
-    border-radius: var(--radius-sm);
-    font-size: var(--font-size-xs);
-    border: 1px solid var(--color-error);
+/* Hamburger Menu */
+.user-menu {
+    position: relative;
 }
 
-.logout-btn:hover {
-    background: #c0392b;
-    border-color: #c0392b;
+.hamburger-btn {
+    background: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: all var(--transition-fast);
+}
+
+.hamburger-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--color-primary);
+}
+
+.hamburger-icon {
+    width: 20px;
+    height: 2px;
+    background: var(--text-primary);
+    border-radius: 2px;
+    transition: all var(--transition-fast);
+}
+
+.hamburger-btn:hover .hamburger-icon {
+    background: var(--color-primary);
+}
+
+/* User Dropdown Menu */
+.user-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    min-width: 200px;
+    z-index: 1000;
+    overflow: hidden;
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dropdown-item {
+    width: 100%;
+    padding: var(--space-md);
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--glass-border);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    text-align: left;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.dropdown-item:hover {
+    background: var(--color-bg-tertiary);
+}
+
+.admin-item {
+    color: #9b59b6;
+}
+
+.admin-item:hover {
+    background: rgba(155, 89, 182, 0.1);
+}
+
+.logout-item {
+    color: var(--color-error-light);
+}
+
+.logout-item:hover {
+    background: rgba(231, 76, 60, 0.1);
 }
 
 /* Onboarding Modal */
@@ -926,23 +1014,6 @@ button:disabled {
 }
 
 /* Admin Panel Styles */
-.admin-btn {
-    background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
-    border-color: #9b59b6;
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 999;
-    padding: 8px var(--space-md);
-    font-size: var(--font-size-sm);
-    box-shadow: var(--shadow-md);
-}
-
-.admin-btn:hover {
-    background: linear-gradient(135deg, #8e44ad 0%, #7d3c98 100%);
-    border-color: #8e44ad;
-}
-
 .admin-panel {
     position: fixed;
     top: 50%;

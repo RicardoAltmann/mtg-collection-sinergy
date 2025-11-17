@@ -24,7 +24,22 @@
                 <span>👤 </span>
                 <span id="userEmail" class="user-email"></span>
             </div>
-            <button id="logoutBtn" class="logout-btn">Cerrar Sesión</button>
+            <!-- Hamburger Menu -->
+            <div class="user-menu">
+                <button id="hamburgerBtn" class="hamburger-btn" aria-label="Menú de usuario">
+                    <span class="hamburger-icon"></span>
+                    <span class="hamburger-icon"></span>
+                    <span class="hamburger-icon"></span>
+                </button>
+                <div id="userDropdown" class="user-dropdown hidden">
+                    <button id="adminPanelBtn" class="dropdown-item admin-item hidden">
+                        🛡️ Panel Admin
+                    </button>
+                    <button id="logoutBtn" class="dropdown-item logout-item">
+                        🚪 Cerrar Sesión
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Auth Forms (shown when not logged in) -->

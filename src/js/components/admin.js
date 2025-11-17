@@ -402,22 +402,39 @@ window.removeUserAdmin = async function(userId, email) {
 
 /**
  * Initialize admin features
- * Adds admin button to UI if user is admin
+ * Shows admin button in dropdown menu if user is admin
  */
 export async function initAdmin() {
     const adminCheck = await checkAdminStatus();
 
     if (adminCheck) {
-        // Add admin button to the header
-        const header = document.querySelector('header') || document.querySelector('.app-header');
-        if (header) {
-            const adminButton = document.createElement('button');
-            adminButton.id = 'admin-panel-btn';
-            adminButton.className = 'btn admin-btn';
-            adminButton.innerHTML = '🛡️ Admin';
-            adminButton.addEventListener('click', showAdminPanel);
-
-            header.appendChild(adminButton);
+        // Show admin button in dropdown menu
+        const adminPanelBtn = document.getElementById('adminPanelBtn');
+        if (adminPanelBtn) {
+            adminPanelBtn.classList.remove('hidden');
+            adminPanelBtn.addEventListener('click', () => {
+                showAdminPanel();
+                // Close dropdown after clicking
+                document.getElementById('userDropdown').classList.add('hidden');
+            });
         }
+    }
+
+    // Setup hamburger menu toggle
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const userDropdown = document.getElementById('userDropdown');
+
+    if (hamburgerBtn && userDropdown) {
+        hamburgerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            userDropdown.classList.toggle('hidden');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!userDropdown.contains(e.target) && !hamburgerBtn.contains(e.target)) {
+                userDropdown.classList.add('hidden');
+            }
+        });
     }
 }
