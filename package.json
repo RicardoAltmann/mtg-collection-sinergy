@@ -9,6 +9,7 @@
     "test": "vitest run",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
+    "verify:env": "node verify-env.js",
     "admin:make-first": "node scripts/make-first-admin.js",
     "restore:collection": "node scripts/restore-collection.js"
   },
