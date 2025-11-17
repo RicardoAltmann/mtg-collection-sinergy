@@ -212,6 +212,30 @@ function initEventListeners() {
             });
         }
 
+        // User menu toggle
+        const userMenuToggle = document.getElementById('userMenuToggle');
+        const userDropdown = document.getElementById('userDropdown');
+
+        if (userMenuToggle && userDropdown && !userMenuToggle.dataset.toggleBound) {
+            const toggleMenu = (e) => {
+                e.stopPropagation();
+                const isHidden = userDropdown.classList.toggle('hidden');
+                userMenuToggle.classList.toggle('open', !isHidden);
+            };
+
+            const closeMenu = (e) => {
+                if (!userDropdown.contains(e.target) && !userMenuToggle.contains(e.target)) {
+                    userDropdown.classList.add('hidden');
+                    userMenuToggle.classList.remove('open');
+                }
+            };
+
+            userMenuToggle.addEventListener('click', toggleMenu);
+            document.addEventListener('click', closeMenu);
+            userMenuToggle.dataset.toggleBound = 'true';
+            userDropdown.dataset.outsideHandlerBound = 'true';
+        }
+
         // Analyze button
         const analyzeBtn = document.getElementById('analyzeBtn');
         if (analyzeBtn) {
