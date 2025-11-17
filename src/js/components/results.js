@@ -5,6 +5,7 @@
  */
 
 import { logger } from '../utils/logger.js';
+import { getCardFeedbackAdjustment, recordCardSignal } from '../utils/feedback.js';
 
 // Store all synergies for filtering
 let allSynergies = [];
@@ -253,6 +254,49 @@ function renderCardByMode(item) {
     return viewMode === 'list' ? createListItemHTML(item) : createCardHTML(item);
 }
 
+function formatFeedbackStatus(cardName) {
+    const feedback = getCardFeedbackAdjustment(cardName);
+    if (feedback.totalVotes === 0) return 'Aún sin votos';
+
+    const sentiment = feedback.adjustment > 0
+        ? 'Feedback positivo'
+        : feedback.adjustment < 0
+            ? 'Feedback negativo'
+            : 'Opiniones balanceadas';
+
+    const votesLabel = feedback.totalVotes === 1 ? '1 voto' : `${feedback.totalVotes} votos`;
+    return `${sentiment} · ${votesLabel}`;
+}
+
+function slugifyCardId(cardName = '') {
+    return cardName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
+
+function renderFeedbackControls(cardName) {
+    const safeCardName = JSON.stringify(cardName);
+    const statusId = `feedback-${slugifyCardId(cardName)}`;
+    const statusText = formatFeedbackStatus(cardName);
+
+    return `
+        <div class="card-feedback" aria-label="Feedback de la comunidad">
+            <div class="feedback-row">
+                <div class="feedback-buttons" role="group" aria-label="Calificar sugerencia">
+                    <button class="feedback-btn" type="button" onclick="window.handleCardFeedbackUI(${safeCardName}, 'up')" aria-label="Esta carta me sirve">
+                        👍
+                    </button>
+                    <button class="feedback-btn" type="button" onclick="window.handleCardFeedbackUI(${safeCardName}, 'down')" aria-label="Esta carta no me sirve">
+                        👎
+                    </button>
+                </div>
+                <span class="feedback-status" data-feedback-status="${statusId}">${statusText}</span>
+            </div>
+        </div>
+    `;
+}
+
 /**
  * Create HTML for a single card item
  *
@@ -311,6 +355,7 @@ export function createCardHTML(item) {
             </div>
             <div class="card-body">
                 ${reasonsList}
+                ${renderFeedbackControls(item.card.name)}
             </div>
         </div>
     `;
@@ -367,6 +412,7 @@ function createListItemHTML(item) {
                 </div>
                 <div class="card-body list-body">
                     ${reasonsList}
+                    ${renderFeedbackControls(item.card.name)}
                 </div>
             </div>
             <div class="score-chip ${synergyTier} list-score">
@@ -512,4 +558,20 @@ export function toggleViewMode(view, event) {
  */
 export function getAllSynergies() {
     return allSynergies;
+}
+
+/**
+ * Handle thumbs-up/down feedback from UI and refresh status text
+ *
+ * @param {string} cardName - Name of the card receiving feedback
+ * @param {'up'|'down'} signal - Feedback direction
+ */
+export function handleCardFeedback(cardName, signal) {
+    recordCardSignal(cardName, signal);
+
+    const statusId = `feedback-${slugifyCardId(cardName)}`;
+    const statusEl = document.querySelector(`[data-feedback-status="${statusId}"]`);
+    if (statusEl) {
+        statusEl.textContent = formatFeedbackStatus(cardName);
+    }
 }
