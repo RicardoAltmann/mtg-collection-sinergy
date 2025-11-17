@@ -7,6 +7,10 @@
 import { logger } from '../utils/logger.js';
 import { getCollectionData, removeFromCollection as apiRemoveFromCollection } from '../api/collection.js';
 
+// UI state
+let collectionViewMode = 'list';
+let lastRenderedCards = [];
+
 /**
  * Display the collection in the UI
  *
@@ -20,6 +24,7 @@ export function displayCollection(cards) {
     }
 
     logger.info('Displaying collection:', cards.length, 'cards');
+    lastRenderedCards = cards;
 
     if (cards.length === 0) {
         listDiv.innerHTML = `
@@ -44,33 +49,86 @@ export function displayCollection(cards) {
         return;
     }
 
-    let html = '<div class="synergy-list">';
-    cards.forEach(card => {
-        // Validate card data before displaying
-        const cardName = card.name || 'Nombre desconocido';
-        const cardType = card.type_line || 'Tipo desconocido';
+    const listModeClass = collectionViewMode === 'grid' ? 'collection-list grid' : 'collection-list stack';
+    const items = cards.map(card => renderCollectionCard(card)).join('');
 
-        // Skip cards with invalid data
-        if (!card.name) {
-            logger.warn('Card with incomplete data:', card);
-            return;
-        }
+    listDiv.innerHTML = `<div class="${listModeClass}">${items}</div>`;
+}
 
-        html += `
-            <div class="collection-item">
-                <div class="collection-item-info">
-                    <div class="collection-item-name">${cardName}</div>
-                    <div class="collection-item-type">${cardType}</div>
+/**
+ * Update the collection layout mode and re-render using the last filtered list
+ * @param {'list'|'grid'} mode - Target view mode
+ */
+export function setCollectionViewMode(mode) {
+    if (!['list', 'grid'].includes(mode)) return;
+    collectionViewMode = mode;
+
+    // Update toggle buttons if present
+    const listBtn = document.getElementById('collectionListViewBtn');
+    const gridBtn = document.getElementById('collectionGridViewBtn');
+    if (listBtn && gridBtn) {
+        listBtn.classList.toggle('active', mode === 'list');
+        gridBtn.classList.toggle('active', mode === 'grid');
+    }
+
+    if (lastRenderedCards.length > 0) {
+        displayCollection(lastRenderedCards);
+    }
+}
+
+/**
+ * Build a collection card with badges and a compact action area
+ * @param {Object} card - Card data
+ * @returns {string} HTML markup for the card
+ */
+function renderCollectionCard(card) {
+    // Validate card data before displaying
+    if (!card.name) {
+        logger.warn('Card with incomplete data:', card);
+        return '';
+    }
+
+    const cardName = card.name || 'Nombre desconocido';
+    const cardType = card.type_line || 'Tipo desconocido';
+    const mainType = extractMainType(cardType);
+
+    const roleChips = [
+        mainType ? `<span class="collection-chip">${mainType}</span>` : '',
+        card.color_identity ? `<span class="collection-chip subtle">${card.color_identity.join('') || 'Incoloro'}</span>` : ''
+    ].filter(Boolean).join('');
+
+    const layoutClass = collectionViewMode === 'grid' ? 'collection-card tile' : 'collection-card row';
+
+    return `
+        <article class="${layoutClass}">
+            <div class="collection-card__header">
+                <div class="collection-card__title-group">
+                    <div class="collection-card__name">${cardName}</div>
+                    <div class="collection-card__chips">${roleChips}</div>
                 </div>
-                <button class="delete-btn" onclick="window.removeFromCollectionUI('${cardName.replace(/'/g, "\\'")}')">
-                    Eliminar
+                <button class="delete-btn ghost" onclick="window.removeFromCollectionUI('${cardName.replace(/'/g, "\\'")}')" aria-label="Eliminar ${cardName}">
+                    ✕
                 </button>
             </div>
-        `;
-    });
-    html += '</div>';
+            <div class="collection-card__type">${cardType}</div>
+            <div class="collection-card__meta">
+                <span class="meta-chip subtle">En colección</span>
+                <span class="meta-chip subtle">Lista ${collectionViewMode === 'grid' ? 'visual' : 'compacta'}</span>
+            </div>
+        </article>
+    `;
+}
 
-    listDiv.innerHTML = html;
+function extractMainType(typeLine) {
+    const type = typeLine.toLowerCase();
+    if (type.includes('creature')) return 'Criatura';
+    if (type.includes('instant')) return 'Instantáneo';
+    if (type.includes('sorcery')) return 'Conjuro';
+    if (type.includes('artifact')) return 'Artefacto';
+    if (type.includes('enchantment')) return 'Encantamiento';
+    if (type.includes('planeswalker')) return 'Planeswalker';
+    if (type.includes('land')) return 'Tierra';
+    return '';
 }
 
 /**

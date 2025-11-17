@@ -122,16 +122,22 @@
                         Limpiar Colección
                     </button>
                 </div>
-                <div class="input-group">
-                    <input type="text" id="searchCollection" placeholder="Buscar en tu colección...">
-                </div>
-                <div class="filter-group">
-                    <label>Ordenar por:</label>
-                    <select id="sortCollection" class="sort-select">
-                        <option value="name">Nombre (A-Z)</option>
-                        <option value="type">Tipo de carta</option>
-                        <option value="date">Agregadas recientemente</option>
-                    </select>
+                <div class="collection-toolbar">
+                    <div class="input-group">
+                        <input type="text" id="searchCollection" placeholder="Buscar en tu colección...">
+                    </div>
+                    <div class="filter-group">
+                        <label>Ordenar por:</label>
+                        <select id="sortCollection" class="sort-select">
+                            <option value="name">Nombre (A-Z)</option>
+                            <option value="type">Tipo de carta</option>
+                            <option value="date">Agregadas recientemente</option>
+                        </select>
+                    </div>
+                    <div class="view-toggle" role="group" aria-label="Cambiar vista de colección">
+                        <button id="collectionListViewBtn" class="view-btn active" type="button">📋 Lista</button>
+                        <button id="collectionGridViewBtn" class="view-btn" type="button">🔳 Tarjetas</button>
+                    </div>
                 </div>
             </div>
             <div id="collectionList"></div>
