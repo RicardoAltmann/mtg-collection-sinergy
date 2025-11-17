@@ -2234,12 +2234,344 @@
             'heliod, sun-crowned': ['walking ballista']
         };
 
+        // === FASE 2: FUNCIONES HELPER ===
+
+        // === PREPARACIÓN PARA INTEGRACIÓN CON EDHREC (FASE 2.5 - FUTURA) ===
+        /*
+         * Esta función será activada en una futura actualización cuando se implemente
+         * la integración con la API de EDHRec para obtener recomendaciones basadas
+         * en datos reales de la comunidad.
+         *
+         * Endpoint: https://json.edhrec.com/commanders/{commander-slug}.json
+         *
+         * Beneficios:
+         * - Top cards reales usadas con cada comandante
+         * - Sinergias validadas por la comunidad
+         * - Datos de popularidad y win-rate
+         * - Combos específicos por comandante
+         */
+        async function fetchEDHRecData(commanderName) {
+            try {
+                // Convertir nombre a slug format (lowercase, guiones)
+                const slug = commanderName.toLowerCase()
+                    .replace(/[,'']/g, '')
+                    .replace(/\s+/g, '-')
+                    .replace(/[^a-z0-9-]/g, '');
+
+                // EDHRec API endpoint (requiere CORS proxy o backend)
+                // const url = `https://json.edhrec.com/commanders/${slug}.json`;
+                // const response = await fetch(url);
+                // const data = await response.json();
+
+                // Estructura de datos esperada:
+                // {
+                //   container: {
+                //     json_dict: {
+                //       cardlists: [
+                //         { header: "Top Cards", cardviews: [...] },
+                //         { header: "High Synergy Cards", cardviews: [...] },
+                //         { header: "Creatures", cardviews: [...] }
+                //       ]
+                //     }
+                //   }
+                // }
+
+                // return data;
+                return null; // Placeholder por ahora
+            } catch (error) {
+                console.warn('EDHRec data not available:', error);
+                return null;
+            }
+        }
+
+        // Función helper para aplicar boost basado en EDHRec
+        function applyEDHRecBoost(card, edhrecData) {
+            if (!edhrecData) return 0;
+
+            let boost = 0;
+            // Si la carta está en el top 50 de EDHRec para este comandante
+            // boost += 20;
+
+            // Si tiene alta sinergia según EDHRec
+            // boost += 15;
+
+            return boost;
+        }
+        // === FIN DE PREPARACIÓN EDHREC ===
+
+        // Contar símbolos de mana de colores específicos (para devotion, chroma, etc)
+        function countColorPips(manaCost, targetColors) {
+            if (!manaCost) return 0;
+            let count = 0;
+
+            // Regex para encontrar símbolos de mana individuales
+            const manaSymbols = manaCost.match(/\{[^}]+\}/g) || [];
+
+            manaSymbols.forEach(symbol => {
+                targetColors.forEach(color => {
+                    if (symbol.includes(color)) {
+                        count++;
+                    }
+                });
+            });
+
+            return count;
+        }
+
+        // Detectar el arquetipo del comandante automáticamente
+        function detectArchetype(commanderData) {
+            const text = (commanderData.oracle_text || '').toLowerCase();
+            const types = (commanderData.type_line || '').toLowerCase();
+            const cmc = commanderData.cmc || 0;
+
+            let scores = {
+                aggro: 0,
+                control: 0,
+                combo: 0,
+                midrange: 0,
+                ramp: 0,
+                voltron: 0,
+                stax: 0
+            };
+
+            // AGGRO indicators
+            if (text.includes('haste') || text.includes('double strike') || text.includes('first strike')) scores.aggro += 2;
+            if (text.includes('attack') && (text.includes('trigger') || text.includes('whenever'))) scores.aggro += 2;
+            if (text.includes('combat damage')) scores.aggro += 2;
+            if (cmc <= 3 && types.includes('creature')) scores.aggro += 1;
+            if (text.includes('token') && text.includes('creature')) scores.aggro += 1;
+
+            // CONTROL indicators
+            if (text.includes('counter') && text.includes('spell')) scores.control += 2;
+            if (text.includes('return') && text.includes('hand')) scores.control += 2;
+            if (text.includes('draw') && text.includes('card')) scores.control += 2;
+            if (text.includes('destroy') || text.includes('exile')) scores.control += 1;
+            if (cmc >= 5) scores.control += 1;
+
+            // COMBO indicators
+            if (text.includes('infinite')) scores.combo += 3;
+            if (text.includes('untap') && (text.includes('permanent') || text.includes('artifact'))) scores.combo += 2;
+            if (text.includes('copy') && text.includes('spell')) scores.combo += 2;
+            if (text.includes('win the game')) scores.combo += 3;
+            if (text.includes('search your library')) scores.combo += 1;
+
+            // MIDRANGE indicators
+            if (text.includes('enters the battlefield')) scores.midrange += 2;
+            if (text.includes('+1/+1 counter')) scores.midrange += 2;
+            if (text.includes('whenever') && text.includes('creature')) scores.midrange += 1;
+            if (cmc >= 3 && cmc <= 5) scores.midrange += 1;
+
+            // RAMP indicators
+            if (text.includes('land') && (text.includes('search') || text.includes('put'))) scores.ramp += 2;
+            if (text.includes('mana')) scores.ramp += 2;
+            if (text.includes('untap') && text.includes('land')) scores.ramp += 2;
+            if (types.includes('land')) scores.ramp += 2;
+
+            // VOLTRON indicators (comandante que se potencia a sí mismo)
+            if (text.includes('equip')) scores.voltron += 3;
+            if (text.includes('aura')) scores.voltron += 2;
+            if (text.includes('commander damage')) scores.voltron += 3;
+            if ((text.includes('+x/+x') || text.includes('+1/+1')) && types.includes('creature')) scores.voltron += 2;
+            if (text.includes('double') && (text.includes('power') || text.includes('damage'))) scores.voltron += 2;
+
+            // STAX indicators
+            if (text.includes('can\'t') || text.includes('cannot')) scores.stax += 2;
+            if (text.includes('opponents') && (text.includes('pay') || text.includes('sacrifice'))) scores.stax += 2;
+            if (text.includes('tax')) scores.stax += 2;
+
+            // Encontrar el arquetipo con mayor score
+            let maxScore = 0;
+            let archetype = 'midrange'; // default
+
+            for (const [type, score] of Object.entries(scores)) {
+                if (score > maxScore) {
+                    maxScore = score;
+                    archetype = type;
+                }
+            }
+
+            return archetype;
+        }
+
+        // Detectar el rol de una carta en el deck
+        function detectCardRole(card) {
+            const text = (card.oracle_text || '').toLowerCase();
+            const types = (card.type_line || '').toLowerCase();
+            const cmc = card.cmc || 0;
+            const name = card.name.toLowerCase();
+
+            // Check staples first
+            for (const [category, cards] of Object.entries(STAPLES)) {
+                if (cards.includes(name)) {
+                    return category;
+                }
+            }
+
+            // Ramp
+            if (cmc <= 3 && (text.includes('add') && text.includes('mana') ||
+                text.includes('search') && text.includes('land') ||
+                types.includes('artifact') && (text.includes('{t}') || text.includes('tap:')))) {
+                return 'ramp';
+            }
+
+            // Card draw
+            if (text.includes('draw') && (text.includes('card') || text.includes('cards'))) {
+                return 'card_draw';
+            }
+
+            // Removal
+            if (text.includes('destroy') || text.includes('exile') && (text.includes('target') || text.includes('choose'))) {
+                return 'removal';
+            }
+
+            // Board wipes
+            if ((text.includes('destroy all') || text.includes('exile all')) && text.includes('creature')) {
+                return 'board_wipes';
+            }
+
+            // Tutors
+            if (text.includes('search your library') && !text.includes('basic land')) {
+                return 'tutors';
+            }
+
+            // Counterspells
+            if (text.includes('counter target spell')) {
+                return 'counterspells';
+            }
+
+            // Protection
+            if (text.includes('protection') || text.includes('hexproof') || text.includes('indestructible') ||
+                text.includes('shroud') || types.includes('equipment') && cmc <= 2) {
+                return 'protection';
+            }
+
+            // Recursion
+            if (text.includes('return') && (text.includes('graveyard') || text.includes('battlefield'))) {
+                return 'recursion';
+            }
+
+            // Win conditions (payoffs)
+            if (cmc >= 6 || text.includes('win the game') || text.includes('infinite')) {
+                return 'win_condition';
+            }
+
+            // Value engines
+            if (text.includes('whenever') || text.includes('at the beginning')) {
+                return 'value_engine';
+            }
+
+            // Default: threats/creatures
+            if (types.includes('creature')) {
+                return 'threat';
+            }
+
+            return 'utility';
+        }
+
+        // Ponderación de roles según arquetipo
+        const ARCHETYPE_WEIGHTS = {
+            aggro: {
+                ramp: 1.3,
+                card_draw: 1.0,
+                removal: 0.8,
+                board_wipes: 0.5,
+                tutors: 0.9,
+                counterspells: 0.6,
+                protection: 1.4,
+                threat: 1.5,
+                value_engine: 0.8,
+                win_condition: 1.2
+            },
+            control: {
+                ramp: 1.2,
+                card_draw: 1.8,
+                removal: 1.8,
+                board_wipes: 1.8,
+                tutors: 1.3,
+                counterspells: 2.0,
+                protection: 1.3,
+                threat: 0.7,
+                value_engine: 1.4,
+                win_condition: 1.5
+            },
+            combo: {
+                ramp: 1.5,
+                card_draw: 1.6,
+                removal: 1.0,
+                board_wipes: 0.8,
+                tutors: 2.5,
+                counterspells: 1.5,
+                protection: 1.8,
+                threat: 0.5,
+                value_engine: 1.0,
+                win_condition: 2.0,
+                combos: 2.5
+            },
+            midrange: {
+                ramp: 1.4,
+                card_draw: 1.4,
+                removal: 1.5,
+                board_wipes: 1.3,
+                tutors: 1.2,
+                counterspells: 1.0,
+                protection: 1.2,
+                threat: 1.3,
+                value_engine: 1.6,
+                win_condition: 1.4
+            },
+            ramp: {
+                ramp: 2.0,
+                card_draw: 1.5,
+                removal: 1.0,
+                board_wipes: 1.2,
+                tutors: 1.4,
+                counterspells: 0.8,
+                protection: 1.0,
+                threat: 1.0,
+                value_engine: 1.3,
+                win_condition: 1.8
+            },
+            voltron: {
+                ramp: 1.3,
+                card_draw: 1.2,
+                removal: 1.0,
+                board_wipes: 0.6,
+                tutors: 1.5,
+                counterspells: 0.8,
+                protection: 2.5,
+                threat: 0.6,
+                value_engine: 0.8,
+                win_condition: 1.8,
+                equipment: 2.0,
+                aura: 2.0
+            },
+            stax: {
+                ramp: 1.4,
+                card_draw: 1.6,
+                removal: 1.5,
+                board_wipes: 1.5,
+                tutors: 1.8,
+                counterspells: 1.6,
+                protection: 1.4,
+                threat: 0.8,
+                value_engine: 1.3,
+                win_condition: 1.5,
+                stax_piece: 2.0
+            }
+        };
+
         function calculateSynergies() {
             const commanderColors = commanderData.color_identity || [];
             const commanderText = (commanderData.oracle_text || '').toLowerCase();
             const commanderTypes = (commanderData.type_line || '').toLowerCase();
             const commanderKeywords = commanderData.keywords || [];
             const commanderCMC = commanderData.cmc || 0;
+
+            // === FASE 2: DETECTAR ARQUETIPO DEL COMANDANTE ===
+            const archetype = detectArchetype(commanderData);
+            const archetypeWeights = ARCHETYPE_WEIGHTS[archetype] || ARCHETYPE_WEIGHTS.midrange;
+
+            console.log(`🎯 Arquetipo detectado: ${archetype.toUpperCase()}`);
 
             return cardCollection.map(card => {
                 const reasons = [];
@@ -2257,6 +2589,9 @@
                 const cardTypes = (card.type_line || '').toLowerCase();
                 const cardCMC = card.cmc || 0;
                 const cardName = card.name.toLowerCase();
+
+                // === FASE 2: DETECTAR ROL DE LA CARTA ===
+                const cardRole = detectCardRole(card);
 
                 // === MEJORA 1: ANÁLISIS DE CURVA DE MANA ===
                 // Early game (CMC 0-2): ramp, early interaction
@@ -2422,10 +2757,58 @@
                     }
                 }
 
+                // === FASE 2: ANÁLISIS DE SÍMBOLOS DE MANA ===
+                // Detectar si el comandante se beneficia de devotion/chroma/pip-counting
+                if (commanderText.includes('devotion') || commanderText.includes('chroma')) {
+                    const cardPips = countColorPips(card.mana_cost, commanderColors);
+                    if (cardPips > 0) {
+                        const pipBonus = cardPips * 3;
+                        score += pipBonus;
+                        reasons.push(`✓ ${cardPips} pips para devotion/chroma (+${pipBonus})`);
+                    }
+                }
+
+                // Detectar comandantes que cuentan permanentes de un color
+                commanderColors.forEach(color => {
+                    const colorName = {W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green'}[color];
+                    if (colorName && commanderText.includes(colorName) &&
+                        (commanderText.includes('permanent') || commanderText.includes('spell'))) {
+                        if (cardColors.includes(color)) {
+                            score += 4;
+                            reasons.push(`✓ Permanente ${colorName} para habilidad del comandante`);
+                        }
+                    }
+                });
+
+                // === FASE 2: PONDERACIÓN POR ARQUETIPO ===
+                // Aplicar multiplicador según el arquetipo y el rol de la carta
+                let archetypeMultiplier = 1.0;
+                if (archetypeWeights[cardRole]) {
+                    archetypeMultiplier = archetypeWeights[cardRole];
+                }
+
+                // Solo aplicar multiplicador a scores positivos
+                if (score > 0 && archetypeMultiplier !== 1.0) {
+                    const oldScore = score;
+                    score = Math.round(score * archetypeMultiplier);
+
+                    // Informar si hay cambio significativo (>10%)
+                    if (Math.abs(archetypeMultiplier - 1.0) > 0.2) {
+                        const change = score - oldScore;
+                        if (change > 0) {
+                            reasons.push(`✓ Rol ideal para ${archetype}: ${cardRole} (+${change})`);
+                        } else if (change < 0) {
+                            reasons.push(`⚠ Rol menos útil para ${archetype}: ${cardRole} (${change})`);
+                        }
+                    }
+                }
+
                 return {
                     card: card,
                     score: score,
-                    reasons: reasons
+                    reasons: reasons,
+                    role: cardRole,  // Añadimos el rol para debugging
+                    archetype: archetype  // Y el arquetipo detectado
                 };
             }).sort((a, b) => b.score - a.score);
         }
@@ -2500,10 +2883,35 @@
             // Get unique card types
             const cardTypes = getCardTypes(synergies);
 
+            // Detectar arquetipo del primer resultado (todos tienen el mismo)
+            const detectedArchetype = synergies.length > 0 ? synergies[0].archetype : 'midrange';
+            const archetypeEmojis = {
+                aggro: '⚔️',
+                control: '🛡️',
+                combo: '🎯',
+                midrange: '⚖️',
+                ramp: '🌲',
+                voltron: '🗡️',
+                stax: '🔒'
+            };
+            const archetypeDescriptions = {
+                aggro: 'Estrategia agresiva enfocada en atacar rápido',
+                control: 'Control del tablero y acumulación de ventajas',
+                combo: 'Victoria mediante combinaciones infinitas',
+                midrange: 'Equilibrio entre amenazas y respuestas',
+                ramp: 'Aceleración de maná para grandes amenazas',
+                voltron: 'Potenciar al comandante con equipos/auras',
+                stax: 'Limitar recursos y opciones de oponentes'
+            };
+
             let html = `
                 <div class="commander-info">
                     <h2>${commanderData.name}</h2>
                     <p class="card-type">${commanderData.type_line}</p>
+                    <div style="margin: 10px 0; padding: 10px; background: rgba(52, 152, 219, 0.15); border-left: 3px solid #3498db; border-radius: 4px;">
+                        <strong style="color: #3498db;">${archetypeEmojis[detectedArchetype]} Arquetipo detectado: ${detectedArchetype.toUpperCase()}</strong>
+                        <p style="margin: 5px 0 0 0; color: #95a5a6; font-size: 0.9em;">${archetypeDescriptions[detectedArchetype]}</p>
+                    </div>
                     <p style="margin-top: 10px; color: #bdc3c7;">${commanderData.oracle_text || ''}</p>
                     <div class="stats">
                         <div class="stat-box tooltip">
