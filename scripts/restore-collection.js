@@ -9,7 +9,7 @@
  * Usage:
  *   node scripts/restore-collection.js [email]
  *
- * Si no se proporciona email, usa ricardo.altmann@gmail.com
+ * You must provide an email as the first argument
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -20,7 +20,7 @@ dotenv.config();
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const DEFAULT_EMAIL = 'ricardo.altmann@gmail.com';
+const DEFAULT_EMAIL = process.env.ADMIN_EMAIL || null;
 
 async function restoreCollection() {
     // Validar variables de entorno
@@ -34,6 +34,13 @@ async function restoreCollection() {
 
     // Obtener email del argumento o usar default
     const targetEmail = process.argv[2] || DEFAULT_EMAIL;
+
+    if (!targetEmail) {
+        console.error('❌ Error: Email es requerido');
+        console.error('Uso: node scripts/restore-collection.js tu-email@ejemplo.com');
+        console.error('O configura ADMIN_EMAIL en tu archivo .env');
+        process.exit(1);
+    }
 
     console.log('🔧 Iniciando recuperación de colección...');
     console.log(`📧 Email del usuario: ${targetEmail}`);

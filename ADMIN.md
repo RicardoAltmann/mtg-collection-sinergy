@@ -51,11 +51,11 @@ El script `make-first-admin.js` facilita la creación del primer administrador:
 # Instalar dependencias si aún no lo has hecho
 npm install
 
-# Usar el email por defecto (ricardo.altmann@gmail.com)
-npm run admin:make-first
+# Especificar el email del usuario a hacer admin
+node scripts/make-first-admin.js tu-email@ejemplo.com
 
-# O especificar un email diferente
-node scripts/make-first-admin.js otro.usuario@example.com
+# O configurar ADMIN_EMAIL en .env y luego ejecutar
+npm run admin:make-first
 ```
 
 **Importante:** El usuario debe estar registrado en la aplicación antes de ejecutar este script.
