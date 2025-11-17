@@ -25,8 +25,13 @@ export async function showMainApp() {
     document.getElementById('userInfo').classList.remove('hidden');
     document.getElementById('userEmail').textContent = currentUser.email;
 
-    // Load user's collection
+    // Load user's collection and display it
     await loadCollection();
+
+    // Update UI with collection data
+    const { updateCollectionCount, filterCollection } = await import('./collection.js');
+    updateCollectionCount();
+    filterCollection();
 
     // Load saved analysis results (will be handled by synergy/engine module)
     if (window.loadSavedAnalysis) {
