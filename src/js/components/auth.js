@@ -25,8 +25,19 @@ export async function showMainApp() {
     document.getElementById('userInfo').classList.remove('hidden');
     document.getElementById('userEmail').textContent = currentUser.email;
 
-    // Load user's collection and display it
-    await loadCollection();
+    // Load user's collection and display it with progress indicator
+    const collectionListDiv = document.getElementById('collectionList');
+    if (collectionListDiv) {
+        collectionListDiv.innerHTML = '<div class="loading">⏳ Cargando colección...</div>';
+    }
+
+    await loadCollection({
+        onProgress: (loaded, total) => {
+            if (collectionListDiv && total > 200) {
+                collectionListDiv.innerHTML = `<div class="loading">⏳ Cargando colección... ${loaded}/${total} cartas</div>`;
+            }
+        }
+    });
 
     // Update UI with collection data
     const { updateCollectionCount, filterCollection } = await import('./collection.js');
