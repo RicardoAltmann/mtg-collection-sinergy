@@ -14,20 +14,27 @@ let adminData = null;
 export async function checkAdminStatus() {
     try {
         const headers = await getAuthHeaders();
+        console.log('[checkAdminStatus] Headers:', headers);
+
         const response = await fetch('/api/admin/check', { headers });
+        console.log('[checkAdminStatus] Response status:', response.status, response.ok);
 
         if (!response.ok) {
+            console.warn('[checkAdminStatus] Response not OK:', response.status, response.statusText);
             isAdmin = false;
             return false;
         }
 
         const data = await response.json();
+        console.log('[checkAdminStatus] Response data:', data);
+
         isAdmin = data.isAdmin;
         adminData = data;
 
+        console.log('[checkAdminStatus] isAdmin set to:', isAdmin);
         return isAdmin;
     } catch (error) {
-        console.error('Error checking admin status:', error);
+        console.error('[checkAdminStatus] Error checking admin status:', error);
         isAdmin = false;
         return false;
     }
@@ -530,15 +537,23 @@ export async function initAdmin() {
     console.log('[initAdmin] Admin status:', adminCheck);
 
     if (adminCheck) {
+        console.log('[initAdmin] ✅ User is admin! Showing admin UI elements...');
+
         // Show admin tab button
         const adminTabBtn = document.getElementById('adminTabBtn');
+        console.log('[initAdmin] adminTabBtn element:', adminTabBtn);
         if (adminTabBtn) {
+            console.log('[initAdmin] Removing hidden class from adminTabBtn');
             adminTabBtn.classList.remove('hidden');
+        } else {
+            console.error('[initAdmin] ❌ adminTabBtn element not found!');
         }
 
         // Show admin button in dropdown menu
         const adminPanelBtn = document.getElementById('adminPanelBtn');
+        console.log('[initAdmin] adminPanelBtn element:', adminPanelBtn);
         if (adminPanelBtn) {
+            console.log('[initAdmin] Removing hidden class from adminPanelBtn');
             adminPanelBtn.classList.remove('hidden');
             adminPanelBtn.addEventListener('click', () => {
                 showAdminPanel();
@@ -550,6 +565,8 @@ export async function initAdmin() {
                     userMenuToggle.classList.remove('open');
                 }
             });
+        } else {
+            console.error('[initAdmin] ❌ adminPanelBtn element not found!');
         }
 
         // Setup admin subtabs
@@ -559,6 +576,8 @@ export async function initAdmin() {
                 switchAdminSubtab(subtabName);
             });
         });
+    } else {
+        console.log('[initAdmin] ❌ User is NOT admin (adminCheck returned false)');
     }
 
     console.log('[initAdmin] Admin initialization complete');
