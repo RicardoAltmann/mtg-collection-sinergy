@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MTG Synergy Analyzer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Modular CSS -->
+    <link rel="stylesheet" href="/src/css/tokens.css">
+    <link rel="stylesheet" href="/src/css/base.css">
+    <link rel="stylesheet" href="/src/css/components.css">
+</head>
+<body>
+    <a href="#mainApp" class="skip-to-main">Saltar al contenido principal</a>
+    <div class="container">
+        <h1>🎴 MTG Synergy Analyzer</h1>
+
+        <!-- User Info (shown when logged in) -->
+        <div id="userInfo" class="user-info hidden">
+            <div>
+                <span>👤 </span>
+                <span id="userEmail" class="user-email"></span>
+            </div>
+            <button id="logoutBtn" class="logout-btn">Cerrar Sesión</button>
+        </div>
+
+        <!-- Auth Forms (shown when not logged in) -->
+        <div id="authContainer" class="auth-container hidden">
+            <div class="auth-header">
+                <h2>Inicia sesión para continuar</h2>
+                <p style="color: #95a5a6; margin-top: 10px;">Cada usuario tiene su propia colección</p>
+            </div>
+
+            <div class="auth-tabs">
+                <div id="loginTab" class="auth-tab active">Iniciar Sesión</div>
+                <div id="registerTab" class="auth-tab">Registrarse</div>
+            </div>
+
+            <!-- Login Form -->
+            <div id="loginForm" class="auth-form active">
+                <div class="input-group">
+                    <label for="loginEmail">Email:</label>
+                    <input type="email" id="loginEmail" placeholder="tu@email.com">
+                    <div id="loginEmailValidation" class="validation-message"></div>
+                </div>
+                <div class="input-group">
+                    <label for="loginPassword">Contraseña:</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••">
+                    <div id="loginPasswordValidation" class="validation-message"></div>
+                </div>
+                <button id="loginBtn" style="width: 100%; margin-top: 10px;">
+                    Iniciar Sesión
+                </button>
+                <div id="loginError"></div>
+            </div>
+
+            <!-- Register Form -->
+            <div id="registerForm" class="auth-form">
+                <div class="input-group">
+                    <label for="registerEmail">Email:</label>
+                    <input type="email" id="registerEmail" placeholder="tu@email.com">
+                    <div id="registerEmailValidation" class="validation-message"></div>
+                </div>
+                <div class="input-group">
+                    <label for="registerPassword">Contraseña:</label>
+                    <input type="password" id="registerPassword" placeholder="••••••••">
+                    <ul class="password-requirements">
+                        <li id="req-length">Mínimo 6 caracteres</li>
+                        <li id="req-notempty">No está vacía</li>
+                    </ul>
+                </div>
+                <button id="registerBtn" style="width: 100%; margin-top: 10px;">
+                    Registrarse
+                </button>
+                <div id="registerError"></div>
+            </div>
+        </div>
+
+        <!-- Main App (shown when logged in) -->
+        <div id="mainApp" class="hidden">
+        <!-- Tab Navigation -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="analyze">Analizar Sinergia</button>
+            <button class="tab-btn" data-tab="collection">Mi Colección</button>
+            <button class="tab-btn" data-tab="add">Agregar Cartas</button>
+        </div>
+
+        <!-- Analyze Tab -->
+        <div id="analyzeTab" class="tab-content active">
+            <div class="input-section">
+                <div class="input-group">
+                    <label for="commander">Commander (nombre exacto):</label>
+                    <input type="text" id="commander" placeholder="Ej: Atraxa, Praetors' Voice">
+                    <p class="help-text">Escribe el nombre exacto del commander en inglés</p>
+                </div>
+
+                <button id="analyzeBtn">Analizar Sinergia con Mi Colección</button>
+            </div>
+
+            <div id="results"></div>
+        </div>
+
+        <!-- Collection Tab -->
+        <div id="collectionTab" class="tab-content">
+            <div class="input-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0;">Cartas en Colección: <span id="collectionCount">0</span></h2>
+                    <button id="clearCollectionBtn" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);">
+                        Limpiar Colección
+                    </button>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="searchCollection" placeholder="Buscar en tu colección...">
+                </div>
+                <div class="filter-group">
+                    <label>Ordenar por:</label>
+                    <select id="sortCollection" class="sort-select">
+                        <option value="name">Nombre (A-Z)</option>
+                        <option value="type">Tipo de carta</option>
+                        <option value="date">Agregadas recientemente</option>
+                    </select>
+                </div>
+            </div>
+            <div id="collectionList"></div>
+        </div>
+
+        <!-- Add Cards Tab -->
+        <div id="addTab" class="tab-content">
+            <div class="input-section">
+                <!-- Quick Add with Autocomplete -->
+                <div style="background: rgba(39, 174, 96, 0.1); border: 2px solid rgba(39, 174, 96, 0.3); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                    <h3 style="color: #27ae60; margin-bottom: 15px;">⚡ Agregar Rápido (con autocompletado)</h3>
+                    <p style="color: #95a5a6; margin-bottom: 15px; font-size: 0.95em;">
+                        Escribe el nombre de una carta y obtén sugerencias en tiempo real desde Scryfall
+                    </p>
+                    <div class="autocomplete-container">
+                        <div class="autocomplete-input-wrapper">
+                            <input
+                                type="text"
+                                id="autocompleteInput"
+                                class="autocomplete-input"
+                                placeholder="Ej: Lightning Bolt, Sol Ring..."
+                                autocomplete="off"
+                            >
+                            <button id="addCardFromAutocompleteBtn" class="add-card-btn">
+                                ➕ Agregar
+                            </button>
+                        </div>
+                        <div id="autocompleteDropdown" class="autocomplete-dropdown hidden"></div>
+                    </div>
+                </div>
+
+                <!-- Drag & Drop File Import -->
+                <div style="background: rgba(52, 152, 219, 0.1); border: 2px solid rgba(52, 152, 219, 0.3); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                    <h3 style="color: #3498db; margin-bottom: 15px;">📁 Importar desde Archivo</h3>
+                    <input type="file" id="fileInput" class="file-input-hidden" accept=".csv,.txt">
+                    <div id="dropZone" class="drop-zone">
+                        <div class="drop-zone-icon">📄</div>
+                        <div class="drop-zone-text">Arrastra un archivo CSV o TXT aquí</div>
+                        <div class="drop-zone-subtext">o haz click para seleccionar</div>
+                    </div>
+                    <div style="margin-top: 10px; padding: 15px; background: rgba(52, 152, 219, 0.1); border-left: 3px solid #3498db; border-radius: 4px;">
+                        <p style="margin: 0 0 8px 0; font-weight: 600; color: #3498db;">✓ Formatos aceptados:</p>
+                        <ul style="list-style: none; padding: 0; margin: 0; color: #95a5a6; font-size: 0.9em;">
+                            <li style="margin: 4px 0;">• Archivo de texto (.txt) con un nombre por línea</li>
+                            <li style="margin: 4px 0;">• CSV (.csv) con columna "name" o primera columna</li>
+                            <li style="margin: 4px 0;">• Exportaciones de Archidekt, Moxfield, etc.</li>
+                        </ul>
+                    </div>
+                    <button id="downloadTemplateBtn" style="margin-top: 15px; background: rgba(52, 152, 219, 0.2); border: 1px solid rgba(52, 152, 219, 0.5); color: #3498db; padding: 10px 20px; border-radius: var(--radius-md); cursor: pointer; font-weight: 500; width: 100%; transition: all var(--transition-fast);">
+                        📥 Descargar Plantilla CSV
+                    </button>
+                </div>
+
+                <!-- Manual Text Import -->
+                <div style="background: rgba(243, 156, 18, 0.1); border: 2px solid rgba(243, 156, 18, 0.3); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                    <h3 style="color: #f39c12; margin-bottom: 15px;">✍️ Importación Manual</h3>
+                    <div class="input-group">
+                        <label for="newCards">
+                            Nombres de cartas (una por línea):
+                        </label>
+                        <textarea id="newCards" placeholder="Sol Ring&#10;Lightning Bolt&#10;Counterspell&#10;Command Tower&#10;Arcane Signet&#10;..."></textarea>
+                        <div style="margin-top: 10px; padding: 15px; background: rgba(39, 174, 96, 0.1); border-left: 3px solid #27ae60; border-radius: 4px;">
+                            <p style="margin: 0; font-size: 0.9em; color: #2ecc71;">
+                                <strong>✓ Tip:</strong> Puedes pegar listas directamente desde archivos de texto o exportaciones de otras herramientas.
+                            </p>
+                        </div>
+                    </div>
+
+                    <button id="addBtn">
+                        ➕ Agregar a Colección
+                    </button>
+                </div>
+            </div>
+
+            <div id="addResults"></div>
+        </div>
+        </div>
+        <!-- End mainApp -->
+    </div>
+
+    <!-- Onboarding Modal -->
+    <div id="onboardingModal" class="modal-overlay hidden" role="dialog" aria-labelledby="onboarding-title" aria-modal="true">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="onboarding-title">🎉 ¡Bienvenido al MTG Synergy Analyzer!</h2>
+                <p>Te ayudaremos a construir el mejor mazo Commander</p>
+            </div>
+
+            <div class="onboarding-steps">
+                <div class="onboarding-step">
+                    <div>
+                        <span class="step-number">1</span>
+                        <span class="step-title">Agrega tus cartas</span>
+                    </div>
+                    <p class="step-description">
+                        Ve a la pestaña <strong>"Agregar Cartas"</strong> y pega los nombres de tus cartas (una por línea).
+                        También puedes importar desde archivos de texto.
+                    </p>
+                </div>
+
+                <div class="onboarding-step">
+                    <div>
+                        <span class="step-number">2</span>
+                        <span class="step-title">Revisa tu colección</span>
+                    </div>
+                    <p class="step-description">
+                        En <strong>"Mi Colección"</strong> verás todas tus cartas. Puedes buscarlas, ordenarlas y eliminar las que no necesites.
+                    </p>
+                </div>
+
+                <div class="onboarding-step">
+                    <div>
+                        <span class="step-number">3</span>
+                        <span class="step-title">Analiza sinergias</span>
+                    </div>
+                    <p class="step-description">
+                        En <strong>"Analizar Sinergia"</strong> ingresa el nombre de tu Commander y descubre qué cartas de tu colección
+                        funcionan mejor con él. El sistema calculará puntuaciones de sinergia basadas en mecánicas, tipos y keywords.
+                    </p>
+                </div>
+
+                <div class="onboarding-step">
+                    <div>
+                        <span class="step-number">4</span>
+                        <span class="step-title">Construye tu mazo</span>
+                    </div>
+                    <p class="step-description">
+                        Usa las cartas con <strong style="color: #27ae60;">Alta Sinergia</strong> como base de tu mazo.
+                        Las cartas se organizan automáticamente por nivel de sinergia y tipo.
+                    </p>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" id="closeOnboardingBtn">¡Empecemos! 🚀</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modular JavaScript (ES6 Modules) -->
+    <script type="module" src="/src/js/main.js"></script>
+</body>
+</html>

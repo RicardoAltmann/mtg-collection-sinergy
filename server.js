@@ -427,9 +427,22 @@ app.delete('/api/collection', async (req, res) => {
     }
 });
 
+// Serve static files from src/ directory (CSS, JS modules)
+app.use('/src', express.static(path.join(__dirname, 'src'), {
+    setHeaders: (res, filepath) => {
+        // Set correct MIME type for JavaScript modules
+        if (filepath.endsWith('.js')) {
+            res.setHeader('Content-Type', 'application/javascript');
+        }
+    }
+}));
+
+// Serve public directory (images, fonts, etc.)
+app.use(express.static(path.join(__dirname, 'public')));
+
 // Serve index.html at root
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Export for Vercel serverless
