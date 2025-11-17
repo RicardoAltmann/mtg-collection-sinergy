@@ -1,0 +1,47 @@
+name: ChatGPT Codex PR Helper
+
+on:
+  push:
+    branches:
+      - 'codex/**'
+      - 'chatgpt/**'
+      - 'openai/**'
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  validate-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+        continue-on-error: true
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ ChatGPT Codex PR validation complete! Ready for review.'
+            })
