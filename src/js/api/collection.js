@@ -20,55 +20,116 @@ let userLimitInfo = {
 };
 
 /**
- * Load the user's collection from the server
+ * Load a single page of the user's collection
+ * @private
+ */
+async function loadCollectionPage(limit, offset) {
+    const url = `${API_URL}/api/collection?limit=${limit}&offset=${offset}`;
+    const response = await fetch(url, {
+        headers: getAuthHeaders()
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        logger.error('Collection load failed:', response.status, errorText);
+        throw new Error(`Error al cargar la colección: ${response.status} - ${errorText}`);
+    }
+
+    return await response.json();
+}
+
+/**
+ * Load the user's complete collection from the server
+ * Automatically handles pagination by loading all pages
  *
  * @async
  * @param {Object} options - Loading options
- * @param {number} [options.limit=200] - Max number of cards to load (server max: 200)
- * @param {number} [options.offset=0] - Offset for pagination
- * @returns {Promise<Object[]>} Array of card objects in the collection
+ * @param {number} [options.pageSize=200] - Number of cards per page (server max: 200)
+ * @param {Function} [options.onProgress] - Callback for progress updates (loaded, total)
+ * @returns {Promise<Object[]>} Array of all card objects in the collection
  * @throws {Error} If the collection cannot be loaded
  *
  * @example
+ * // Load all cards
  * const collection = await loadCollection();
  * console.log(`Loaded ${collection.length} cards`);
+ *
+ * @example
+ * // Load with progress indicator
+ * const collection = await loadCollection({
+ *   onProgress: (loaded, total) => console.log(`${loaded}/${total} cards loaded`)
+ * });
  */
 export async function loadCollection(options = {}) {
-    const { limit = 200, offset = 0 } = options;
-    logger.info('Loading collection...', { limit, offset });
+    const { pageSize = 200, onProgress } = options;
+    logger.info('Loading collection with pagination...');
 
     try {
-        const url = `${API_URL}/api/collection?limit=${limit}&offset=${offset}`;
-        const response = await fetch(url, {
-            headers: getAuthHeaders()
-        });
+        const allCards = [];
+        let offset = 0;
+        let hasMore = true;
+        let totalCards = 0;
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            logger.error('Collection load failed:', response.status, errorText);
-            throw new Error(`Error al cargar la colección: ${response.status} - ${errorText}`);
-        }
+        // Load first page to get total count
+        const firstPage = await loadCollectionPage(pageSize, offset);
 
-        const data = await response.json();
-
-        // Handle new paginated format
-        if (data.cards && Array.isArray(data.cards)) {
-            allCollectionData = data.cards;
+        // Handle response format
+        if (firstPage.cards && Array.isArray(firstPage.cards)) {
+            allCards.push(...firstPage.cards);
+            totalCards = firstPage.total || firstPage.cards.length;
+            hasMore = firstPage.hasMore || false;
 
             // Update limit info if provided
-            if (data.userLimit) {
-                userLimitInfo = data.userLimit;
+            if (firstPage.userLimit) {
+                userLimitInfo = firstPage.userLimit;
                 logger.info('User limit info updated:', userLimitInfo);
             }
-        } else if (Array.isArray(data)) {
+
+            // Call progress callback
+            if (onProgress) {
+                onProgress(allCards.length, totalCards);
+            }
+
+            offset += pageSize;
+
+            // Load remaining pages
+            while (hasMore) {
+                logger.info('Loading next page...', { offset, loaded: allCards.length, total: totalCards });
+
+                const page = await loadCollectionPage(pageSize, offset);
+
+                if (page.cards && Array.isArray(page.cards)) {
+                    allCards.push(...page.cards);
+                    hasMore = page.hasMore || false;
+
+                    // Call progress callback
+                    if (onProgress) {
+                        onProgress(allCards.length, totalCards);
+                    }
+                } else {
+                    // Invalid format, stop loading
+                    hasMore = false;
+                }
+
+                offset += pageSize;
+
+                // Safety check to prevent infinite loops
+                if (offset > 10000) {
+                    logger.warn('Reached safety limit of 10000 cards');
+                    break;
+                }
+            }
+
+            allCollectionData = allCards;
+        } else if (Array.isArray(firstPage)) {
             // Backward compatibility: if server returns array directly
-            allCollectionData = data;
+            allCollectionData = firstPage;
         } else {
             logger.error('Invalid collection data format');
             throw new Error('La respuesta del servidor no es válida');
         }
 
-        logger.info('Collection loaded:', allCollectionData.length, 'cards');
+        logger.info('Collection fully loaded:', allCollectionData.length, 'cards');
 
         return allCollectionData;
     } catch (error) {
