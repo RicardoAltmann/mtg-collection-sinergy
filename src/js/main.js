@@ -45,7 +45,7 @@ import {
     handleFileSelect,
     downloadTemplate
 } from './components/fileImport.js';
-import { filterByType, toggleViewMode, handleCardFeedback } from './components/results.js';
+import { filterByType, toggleViewMode, handleCardFeedback, clearAnalysis } from './components/results.js';
 import { showOnboarding, closeOnboarding, showDemoModeMessage } from './components/onboarding.js';
 import { addCards } from './components/addCards.js';
 import { initAdmin } from './components/admin.js';
@@ -136,6 +136,7 @@ function setupGlobalFunctions() {
     window.toggleCollapseUI = toggleCollapse;
     window.toggleViewModeUI = toggleViewMode;
     window.handleCardFeedbackUI = handleCardFeedback;
+    window.clearAnalysis = clearAnalysis;
 
     // Autocomplete functions
     window.selectSuggestionFromAutocomplete = selectSuggestion;
@@ -283,6 +284,16 @@ function initEventListeners() {
                         logger.error('Error clearing collection:', error);
                         alert('Error al limpiar la colección: ' + error.message);
                     }
+                }
+            });
+        }
+
+        // Clear analysis button
+        const clearAnalysisBtn = document.getElementById('clearAnalysisBtn');
+        if (clearAnalysisBtn) {
+            clearAnalysisBtn.addEventListener('click', () => {
+                if (confirm('¿Seguro que quieres limpiar el análisis actual?')) {
+                    clearAnalysis();
                 }
             });
         }
