@@ -42,9 +42,86 @@ function getSupabaseClient(req) {
     return supabase; // Return default client for unauthenticated requests
 }
 
+// Authentication middleware - validates user session before accessing protected routes
+async function requireAuth(req, res, next) {
+    // Skip authentication if not using Supabase
+    if (!USE_SUPABASE) {
+        req.supabaseClient = null;
+        return next();
+    }
+
+    const client = getSupabaseClient(req);
+
+    try {
+        // Verify the user is authenticated
+        const { data: { user }, error } = await client.auth.getUser();
+
+        if (error) {
+            return res.status(401).json({
+                error: 'Authentication failed',
+                message: error.message
+            });
+        }
+
+        if (!user) {
+            return res.status(401).json({
+                error: 'Unauthorized',
+                message: 'Authentication required. Please log in.'
+            });
+        }
+
+        // Attach authenticated client and user to request
+        req.supabaseClient = client;
+        req.user = user;
+        next();
+    } catch (error) {
+        console.error('Authentication middleware error:', error);
+        res.status(401).json({
+            error: 'Authentication failed',
+            message: 'Unable to verify authentication. Please log in again.'
+        });
+    }
+}
+
 // Rate limiting for Scryfall API
 let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL = 100; // 100ms between requests
+
+// Resilient fetch with timeout and retry logic
+const FETCH_TIMEOUT = 10000; // 10 seconds
+const MAX_RETRIES = 3;
+const RETRY_DELAYS = [1000, 2000, 4000]; // Exponential backoff: 1s, 2s, 4s
+
+async function resilientFetch(url, options = {}, retryCount = 0) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        return response;
+    } catch (error) {
+        clearTimeout(timeoutId);
+
+        // Check if it's a timeout or network error and we have retries left
+        const isRetriableError = error.name === 'AbortError' ||
+                                 error.message.includes('fetch') ||
+                                 error.message.includes('network');
+
+        if (isRetriableError && retryCount < MAX_RETRIES) {
+            const delay = RETRY_DELAYS[retryCount];
+            console.warn(`Fetch failed for ${url}, retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return resilientFetch(url, options, retryCount + 1);
+        }
+
+        // Re-throw if not retriable or out of retries
+        throw error;
+    }
+}
 
 async function rateLimitedFetch(url) {
     const now = Date.now();
@@ -57,7 +134,7 @@ async function rateLimitedFetch(url) {
     }
 
     lastRequestTime = Date.now();
-    return fetch(url);
+    return resilientFetch(url);
 }
 
 // EDHRec cache (in-memory, 24 hour TTL)
@@ -106,7 +183,7 @@ async function fetchEDHRecDataFromAPI(commanderSlug) {
         const url = `https://json.edhrec.com/commanders/${commanderSlug}.json`;
         console.log(`Fetching EDHRec data for: ${commanderSlug}`);
 
-        const response = await fetch(url);
+        const response = await resilientFetch(url);
 
         if (!response.ok) {
             throw new Error(`EDHRec returned ${response.status}`);
@@ -131,16 +208,12 @@ async function fetchEDHRecDataFromAPI(commanderSlug) {
 }
 
 // Collection storage functions - work with both Supabase and local file
-async function loadCollection(supabaseClient) {
-    if (USE_SUPABASE && supabaseClient) {
-        // Get current user to filter by user_id
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (!user) throw new Error('User not authenticated');
-
+async function loadCollection(supabaseClient, userId) {
+    if (USE_SUPABASE && supabaseClient && userId) {
         const { data, error } = await supabaseClient
             .from('cards')
             .select('card_data')
-            .eq('user_id', user.id)  // CRITICAL: Filter by user_id for data isolation
+            .eq('user_id', userId)  // CRITICAL: Filter by user_id for data isolation
             .order('created_at', { ascending: true });
 
         if (error) throw error;
@@ -155,18 +228,14 @@ async function loadCollection(supabaseClient) {
     }
 }
 
-async function saveCollection(supabaseClient, collection) {
-    if (USE_SUPABASE && supabaseClient) {
-        // Get current user
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (!user) throw new Error('User not authenticated');
-
+async function saveCollection(supabaseClient, userId, collection) {
+    if (USE_SUPABASE && supabaseClient && userId) {
         // Clear existing and insert new
-        await supabaseClient.from('cards').delete().eq('user_id', user.id);
+        await supabaseClient.from('cards').delete().eq('user_id', userId);
 
         if (collection.length > 0) {
             const rows = collection.map(card => ({
-                user_id: user.id,
+                user_id: userId,
                 card_data: card
             }));
 
@@ -178,30 +247,27 @@ async function saveCollection(supabaseClient, collection) {
     }
 }
 
-async function addCardToCollection(supabaseClient, cardData) {
-    if (USE_SUPABASE && supabaseClient) {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (!user) throw new Error('User not authenticated');
-
+async function addCardToCollection(supabaseClient, userId, cardData) {
+    if (USE_SUPABASE && supabaseClient && userId) {
         const { error } = await supabaseClient
             .from('cards')
             .insert([{
-                user_id: user.id,
+                user_id: userId,
                 card_data: cardData
             }]);
 
         if (error) throw error;
     } else {
-        const collection = await loadCollection(null);
+        const collection = await loadCollection(null, null);
         collection.push(cardData);
-        await saveCollection(null, collection);
+        await saveCollection(null, null, collection);
     }
 }
 
-async function removeCardFromCollection(supabaseClient, cardName) {
-    if (USE_SUPABASE && supabaseClient) {
+async function removeCardFromCollection(supabaseClient, userId, cardName) {
+    if (USE_SUPABASE && supabaseClient && userId) {
         // Find and delete the card
-        const collection = await loadCollection(supabaseClient);
+        const collection = await loadCollection(supabaseClient, userId);
         const filtered = collection.filter(card =>
             card.name.toLowerCase() !== cardName.toLowerCase()
         );
@@ -210,10 +276,10 @@ async function removeCardFromCollection(supabaseClient, cardName) {
             return false; // Card not found
         }
 
-        await saveCollection(supabaseClient, filtered);
+        await saveCollection(supabaseClient, userId, filtered);
         return true;
     } else {
-        const collection = await loadCollection(null);
+        const collection = await loadCollection(null, null);
         const filtered = collection.filter(card =>
             card.name.toLowerCase() !== cardName.toLowerCase()
         );
@@ -222,7 +288,7 @@ async function removeCardFromCollection(supabaseClient, cardName) {
             return false;
         }
 
-        await saveCollection(null, filtered);
+        await saveCollection(null, null, filtered);
         return true;
     }
 }
@@ -326,32 +392,83 @@ app.get('/api/edhrec/:commanderSlug', async (req, res) => {
 });
 
 // Get entire collection
-app.get('/api/collection', async (req, res) => {
+app.get('/api/collection', requireAuth, async (req, res) => {
     try {
-        const client = getSupabaseClient(req);
-        const collection = await loadCollection(client);
+        const collection = await loadCollection(req.supabaseClient, req.user?.id);
         res.json(collection);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Error loading collection:', error);
+        res.status(500).json({ error: 'Failed to load collection' });
     }
 });
 
 // Add cards to collection
-app.post('/api/collection', async (req, res) => {
+app.post('/api/collection', requireAuth, async (req, res) => {
     try {
-        const client = getSupabaseClient(req);
         const { cardNames } = req.body;
 
+        // Validate input is an array
         if (!Array.isArray(cardNames)) {
             return res.status(400).json({ error: 'cardNames must be an array' });
         }
 
-        const collection = await loadCollection(client);
+        // Validate and normalize card names
+        const MAX_CARD_NAME_LENGTH = 200;
+        const MAX_CARDS_PER_REQUEST = 100;
+        const invalidInputs = [];
+        const normalizedNames = [];
+
+        for (const name of cardNames) {
+            // Reject non-string values
+            if (typeof name !== 'string') {
+                invalidInputs.push({ value: name, reason: 'not a string' });
+                continue;
+            }
+
+            // Trim and normalize
+            const trimmed = name.trim();
+
+            // Reject empty strings
+            if (trimmed.length === 0) {
+                invalidInputs.push({ value: name, reason: 'empty after trim' });
+                continue;
+            }
+
+            // Reject overly long names
+            if (trimmed.length > MAX_CARD_NAME_LENGTH) {
+                invalidInputs.push({ value: name, reason: `exceeds max length of ${MAX_CARD_NAME_LENGTH}` });
+                continue;
+            }
+
+            normalizedNames.push(trimmed);
+        }
+
+        // Return early if there are invalid inputs
+        if (invalidInputs.length > 0) {
+            return res.status(400).json({
+                error: 'Invalid card names provided',
+                invalidInputs,
+                message: 'All card names must be non-empty strings with max length of 200 characters'
+            });
+        }
+
+        // Deduplicate (case-insensitive)
+        const uniqueNames = [...new Set(normalizedNames.map(n => n.toLowerCase()))];
+
+        // Limit number of cards per request
+        if (uniqueNames.length > MAX_CARDS_PER_REQUEST) {
+            return res.status(400).json({
+                error: `Too many cards requested. Maximum is ${MAX_CARDS_PER_REQUEST} per request`,
+                requested: uniqueNames.length
+            });
+        }
+
+        const collection = await loadCollection(req.supabaseClient, req.user?.id);
         const results = [];
         const errors = [];
         const skipped = [];
 
-        for (const cardName of cardNames) {
+        for (const cardName of uniqueNames) {
             // Check if card already exists in collection
             const exists = collection.some(card =>
                 card.name.toLowerCase() === cardName.toLowerCase()
@@ -369,7 +486,7 @@ app.post('/api/collection', async (req, res) => {
 
                 if (response.ok) {
                     const data = await response.json();
-                    await addCardToCollection(client, data);
+                    await addCardToCollection(req.supabaseClient, req.user?.id, data);
                     results.push(data.name);
                     // CRITICAL: Update in-memory collection to prevent duplicates in same request
                     collection.push(data);
@@ -377,11 +494,12 @@ app.post('/api/collection', async (req, res) => {
                     errors.push(cardName);
                 }
             } catch (error) {
+                console.error(`Error fetching card ${cardName}:`, error);
                 errors.push(cardName);
             }
         }
 
-        const updatedCollection = await loadCollection(client);
+        const updatedCollection = await loadCollection(req.supabaseClient, req.user?.id);
 
         res.json({
             added: results,
@@ -390,40 +508,41 @@ app.post('/api/collection', async (req, res) => {
             totalInCollection: updatedCollection.length
         });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Error adding cards to collection:', error);
+        res.status(500).json({ error: 'Failed to add cards to collection' });
     }
 });
 
 // Remove a card from collection
-app.delete('/api/collection/:name', async (req, res) => {
+app.delete('/api/collection/:name', requireAuth, async (req, res) => {
     try {
-        const client = getSupabaseClient(req);
         const cardName = req.params.name;
-        const removed = await removeCardFromCollection(client, cardName);
+        const removed = await removeCardFromCollection(req.supabaseClient, req.user?.id, cardName);
 
         if (!removed) {
             return res.status(404).json({ error: 'Card not found in collection' });
         }
 
-        const collection = await loadCollection(client);
+        const collection = await loadCollection(req.supabaseClient, req.user?.id);
 
         res.json({
             message: 'Card removed successfully',
             totalInCollection: collection.length
         });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Error removing card from collection:', error);
+        res.status(500).json({ error: 'Failed to remove card from collection' });
     }
 });
 
 // Clear entire collection
-app.delete('/api/collection', async (req, res) => {
+app.delete('/api/collection', requireAuth, async (req, res) => {
     try {
-        const client = getSupabaseClient(req);
-        await saveCollection(client, []);
+        await saveCollection(req.supabaseClient, req.user?.id, []);
         res.json({ message: 'Collection cleared successfully' });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Error clearing collection:', error);
+        res.status(500).json({ error: 'Failed to clear collection' });
     }
 });
 
