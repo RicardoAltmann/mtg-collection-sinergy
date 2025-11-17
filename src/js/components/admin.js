@@ -420,20 +420,23 @@ export async function initAdmin() {
         }
     }
 
-    // Setup hamburger menu toggle
-    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    // Setup user menu toggle
+    const userMenuToggle = document.getElementById('userMenuToggle');
     const userDropdown = document.getElementById('userDropdown');
 
-    if (hamburgerBtn && userDropdown) {
-        hamburgerBtn.addEventListener('click', (e) => {
+    if (userMenuToggle && userDropdown) {
+        userMenuToggle.addEventListener('click', (e) => {
             e.stopPropagation();
-            userDropdown.classList.toggle('hidden');
+            const isHidden = userDropdown.classList.toggle('hidden');
+            // Toggle arrow rotation
+            userMenuToggle.classList.toggle('open', !isHidden);
         });
 
         // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
-            if (!userDropdown.contains(e.target) && !hamburgerBtn.contains(e.target)) {
+            if (!userDropdown.contains(e.target) && !userMenuToggle.contains(e.target)) {
                 userDropdown.classList.add('hidden');
+                userMenuToggle.classList.remove('open');
             }
         });
     }
