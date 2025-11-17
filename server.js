@@ -208,24 +208,105 @@ async function fetchEDHRecDataFromAPI(commanderSlug) {
 }
 
 // Collection storage functions - work with both Supabase and local file
-async function loadCollection(supabaseClient, userId) {
-    if (USE_SUPABASE && supabaseClient && userId) {
-        const { data, error } = await supabaseClient
-            .from('cards')
-            .select('card_data')
-            .eq('user_id', userId)  // CRITICAL: Filter by user_id for data isolation
-            .order('created_at', { ascending: true });
+// =====================================================
+// COLLECTION FUNCTIONS (Normalized Schema)
+// =====================================================
 
-        if (error) throw error;
-        return data ? data.map(row => row.card_data) : [];
-    } else {
+/**
+ * Load collection with pagination support
+ */
+async function loadCollectionPaginated(supabaseClient, userId, {
+    limit = 50,
+    offset = 0,
+    sortBy = 'date',
+    sortOrder = 'desc'
+} = {}) {
+    if (!USE_SUPABASE || !supabaseClient || !userId) {
         try {
             const data = await fs.readFile(COLLECTION_FILE, 'utf-8');
-            return JSON.parse(data);
+            const collection = JSON.parse(data);
+            return {
+                cards: collection.slice(offset, offset + limit),
+                total: collection.length,
+                hasMore: offset + limit < collection.length,
+                limit,
+                offset
+            };
         } catch (error) {
-            return [];
+            return { cards: [], total: 0, hasMore: false, limit, offset };
         }
     }
+
+    try {
+        const { count, error: countError } = await supabaseClient
+            .from('user_collections')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId);
+
+        if (countError) throw countError;
+
+        let query = supabaseClient
+            .from('user_collections')
+            .select(`
+                id,
+                card_id,
+                added_at,
+                master_cards (
+                    id,
+                    name,
+                    card_data
+                )
+            `)
+            .eq('user_id', userId)
+            .range(offset, offset + limit - 1);
+
+        if (sortBy === 'date') {
+            query = query.order('added_at', { ascending: sortOrder === 'asc' });
+        } else {
+            query = query.order('added_at', { ascending: false });
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        let cards = data.map(row => ({
+            ...row.master_cards.card_data,
+            collection_id: row.id,
+            added_at: row.added_at
+        }));
+
+        if (sortBy === 'name') {
+            cards.sort((a, b) => {
+                const comparison = a.name.localeCompare(b.name);
+                return sortOrder === 'asc' ? comparison : -comparison;
+            });
+        } else if (sortBy === 'type') {
+            cards.sort((a, b) => {
+                const comparison = a.type_line.localeCompare(b.type_line);
+                return sortOrder === 'asc' ? comparison : -comparison;
+            });
+        }
+
+        return {
+            cards,
+            total: count || 0,
+            hasMore: offset + limit < (count || 0),
+            limit,
+            offset
+        };
+    } catch (error) {
+        console.error('Error loading paginated collection:', error);
+        throw error;
+    }
+}
+
+// Legacy function for backward compatibility
+async function loadCollection(supabaseClient, userId) {
+    const result = await loadCollectionPaginated(supabaseClient, userId, {
+        limit: 10000,
+        offset: 0
+    });
+    return result.cards;
 }
 
 async function saveCollection(supabaseClient, userId, collection) {
@@ -247,37 +328,110 @@ async function saveCollection(supabaseClient, userId, collection) {
     }
 }
 
+// Helper function to optimize card data (reduce size from ~8KB to ~2-3KB)
+function optimizeCardData(fullCardData) {
+    return {
+        id: fullCardData.id,
+        name: fullCardData.name,
+        mana_cost: fullCardData.mana_cost,
+        cmc: fullCardData.cmc,
+        type_line: fullCardData.type_line,
+        oracle_text: fullCardData.oracle_text,
+        colors: fullCardData.colors,
+        color_identity: fullCardData.color_identity,
+        keywords: fullCardData.keywords,
+        legalities: fullCardData.legalities,
+        set: fullCardData.set,
+        set_name: fullCardData.set_name,
+        rarity: fullCardData.rarity,
+        image_uris: fullCardData.image_uris,
+        prices: fullCardData.prices,
+        scryfall_uri: fullCardData.scryfall_uri,
+        edhrec_rank: fullCardData.edhrec_rank
+    };
+}
+
 async function addCardToCollection(supabaseClient, userId, cardData) {
     if (USE_SUPABASE && supabaseClient && userId) {
-        const { error } = await supabaseClient
-            .from('cards')
-            .insert([{
-                user_id: userId,
-                card_data: cardData
-            }]);
+        try {
+            const cardId = cardData.id;
+            const optimizedData = optimizeCardData(cardData);
 
-        if (error) throw error;
+            // Insert into master_cards (upsert)
+            const { error: masterError } = await supabaseClient
+                .from('master_cards')
+                .upsert({
+                    id: cardId,
+                    name: cardData.name,
+                    card_data: optimizedData,
+                    updated_at: new Date().toISOString()
+                }, {
+                    onConflict: 'id',
+                    ignoreDuplicates: false
+                });
+
+            if (masterError) {
+                console.error('Error upserting to master_cards:', masterError);
+                throw masterError;
+            }
+
+            // Add to user collection
+            const { error: collectionError } = await supabaseClient
+                .from('user_collections')
+                .insert({
+                    user_id: userId,
+                    card_id: cardId
+                });
+
+            if (collectionError) {
+                if (collectionError.code === '23505') {
+                    return false; // Already exists
+                }
+                throw collectionError;
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Error adding card to collection:', error);
+            throw error;
+        }
     } else {
         const collection = await loadCollection(null, null);
         collection.push(cardData);
         await saveCollection(null, null, collection);
+        return true;
     }
 }
 
 async function removeCardFromCollection(supabaseClient, userId, cardName) {
     if (USE_SUPABASE && supabaseClient && userId) {
-        // Find and delete the card
-        const collection = await loadCollection(supabaseClient, userId);
-        const filtered = collection.filter(card =>
-            card.name.toLowerCase() !== cardName.toLowerCase()
-        );
+        try {
+            // Find the card_id by name (case-insensitive)
+            const { data: masterCard, error: findError } = await supabaseClient
+                .from('master_cards')
+                .select('id')
+                .ilike('name', cardName)
+                .single();
 
-        if (filtered.length === collection.length) {
-            return false; // Card not found
+            if (findError || !masterCard) {
+                console.log(`Card "${cardName}" not found in master_cards`);
+                return false;
+            }
+
+            // Delete from user_collections
+            const { error: deleteError } = await supabaseClient
+                .from('user_collections')
+                .delete()
+                .eq('user_id', userId)
+                .eq('card_id', masterCard.id);
+
+            if (deleteError) throw deleteError;
+
+            return true;
+        } catch (error) {
+            console.error('Error removing card from collection:', error);
+            throw error;
         }
-
-        await saveCollection(supabaseClient, userId, filtered);
-        return true;
     } else {
         const collection = await loadCollection(null, null);
         const filtered = collection.filter(card =>
@@ -291,6 +445,74 @@ async function removeCardFromCollection(supabaseClient, userId, cardName) {
         await saveCollection(null, null, filtered);
         return true;
     }
+}
+
+// ====================
+// USER LIMIT FUNCTIONS
+// ====================
+
+async function getUserCardLimit(supabaseClient, userId) {
+    if (!USE_SUPABASE || !supabaseClient || !userId) {
+        return 500;
+    }
+
+    try {
+        const { data, error } = await supabaseClient
+            .rpc('get_user_card_limit', { check_user_id: userId });
+
+        if (error) {
+            console.warn('Error getting user limit, using default:', error);
+            return 500;
+        }
+
+        return data || 500;
+    } catch (error) {
+        console.warn('Error getting user limit, using default:', error);
+        return 500;
+    }
+}
+
+async function getUserCardCount(supabaseClient, userId) {
+    if (!USE_SUPABASE || !supabaseClient || !userId) {
+        try {
+            const data = await fs.readFile(COLLECTION_FILE, 'utf-8');
+            const collection = JSON.parse(data);
+            return collection.length;
+        } catch {
+            return 0;
+        }
+    }
+
+    try {
+        const { count, error } = await supabaseClient
+            .from('user_collections')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId);
+
+        if (error) throw error;
+        return count || 0;
+    } catch (error) {
+        console.error('Error getting card count:', error);
+        return 0;
+    }
+}
+
+async function checkUserCanAddCards(supabaseClient, userId, numCards) {
+    const [currentCount, limit] = await Promise.all([
+        getUserCardCount(supabaseClient, userId),
+        getUserCardLimit(supabaseClient, userId)
+    ]);
+
+    const remaining = limit - currentCount;
+    const canAdd = (currentCount + numCards) <= limit;
+
+    return {
+        canAdd,
+        currentCount,
+        limit,
+        remaining,
+        wouldExceedBy: canAdd ? 0 : (currentCount + numCards - limit)
+    };
 }
 
 // ====================
@@ -348,29 +570,75 @@ async function getAllUsersStats(supabaseClient) {
     const { data: users, error: usersError } = await supabaseClient.auth.admin.listUsers();
     if (usersError) throw usersError;
 
-    const { data: cardCounts, error: cardsError } = await supabaseClient
-        .from('cards')
+    const { data: collections, error: collectionsError } = await supabaseClient
+        .from('user_collections')
         .select('user_id');
-    if (cardsError) throw cardsError;
+    if (collectionsError) throw collectionsError;
 
     // Count cards per user
     const countMap = {};
-    cardCounts.forEach(card => {
-        countMap[card.user_id] = (countMap[card.user_id] || 0) + 1;
+    collections.forEach(row => {
+        countMap[row.user_id] = (countMap[row.user_id] || 0) + 1;
+    });
+
+    // Get custom limits
+    const { data: limits, error: limitsError } = await supabaseClient
+        .from('user_limits')
+        .select('user_id, max_cards, custom_limit_reason');
+    if (limitsError) throw limitsError;
+
+    const limitsMap = {};
+    limits.forEach(limit => {
+        limitsMap[limit.user_id] = limit;
     });
 
     // Get admin list
     const { data: admins } = await supabaseClient.from('admins').select('user_id');
     const adminIds = new Set(admins?.map(a => a.user_id) || []);
 
-    return users.users.map(user => ({
-        id: user.id,
-        email: user.email,
-        created_at: user.created_at,
-        last_sign_in_at: user.last_sign_in_at,
-        card_count: countMap[user.id] || 0,
-        is_admin: adminIds.has(user.id)
-    }));
+    return users.users.map(user => {
+        const cardCount = countMap[user.id] || 0;
+        const limitInfo = limitsMap[user.id];
+        const maxCards = limitInfo?.max_cards || 500;
+
+        return {
+            id: user.id,
+            email: user.email,
+            created_at: user.created_at,
+            last_sign_in_at: user.last_sign_in_at,
+            card_count: cardCount,
+            max_cards: maxCards,
+            usage_percentage: Math.round((cardCount / maxCards) * 100),
+            has_custom_limit: !!limitInfo,
+            custom_limit_reason: limitInfo?.custom_limit_reason,
+            is_admin: adminIds.has(user.id)
+        };
+    });
+}
+
+async function updateUserLimit(supabaseClient, targetUserId, newLimit, reason = null) {
+    if (!USE_SUPABASE || !supabaseClient) {
+        throw new Error('User limits require Supabase');
+    }
+
+    const { data: { user: admin } } = await supabaseClient.auth.getUser();
+
+    const { data, error } = await supabaseClient
+        .from('user_limits')
+        .upsert({
+            user_id: targetUserId,
+            max_cards: newLimit,
+            custom_limit_reason: reason,
+            updated_at: new Date().toISOString(),
+            updated_by: admin?.id
+        }, {
+            onConflict: 'user_id'
+        })
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
 }
 
 // API Routes
@@ -471,11 +739,51 @@ app.get('/api/edhrec/:commanderSlug', async (req, res) => {
     }
 });
 
-// Get entire collection
+// Get collection with pagination
 app.get('/api/collection', requireAuth, async (req, res) => {
     try {
-        const collection = await loadCollection(req.supabaseClient, req.user?.id);
-        res.json(collection);
+        const limit = parseInt(req.query.limit) || 50;
+        const offset = parseInt(req.query.offset) || 0;
+        const sortBy = req.query.sortBy || 'date';
+        const sortOrder = req.query.sortOrder || 'desc';
+
+        if (limit < 1 || limit > 200) {
+            return res.status(400).json({ error: 'Limit must be between 1 and 200' });
+        }
+
+        if (offset < 0) {
+            return res.status(400).json({ error: 'Offset must be non-negative' });
+        }
+
+        if (!['name', 'type', 'date'].includes(sortBy)) {
+            return res.status(400).json({ error: 'sortBy must be one of: name, type, date' });
+        }
+
+        if (!['asc', 'desc'].includes(sortOrder)) {
+            return res.status(400).json({ error: 'sortOrder must be either asc or desc' });
+        }
+
+        const result = await loadCollectionPaginated(req.supabaseClient, req.user?.id, {
+            limit,
+            offset,
+            sortBy,
+            sortOrder
+        });
+
+        const [userLimit, cardCount] = await Promise.all([
+            getUserCardLimit(req.supabaseClient, req.user?.id),
+            getUserCardCount(req.supabaseClient, req.user?.id)
+        ]);
+
+        res.json({
+            ...result,
+            userLimit: {
+                max_cards: userLimit,
+                current_count: cardCount,
+                remaining: userLimit - cardCount,
+                usage_percentage: Math.round((cardCount / userLimit) * 100)
+            }
+        });
     } catch (error) {
         console.error('Error loading collection:', error);
         res.status(500).json({ error: 'Failed to load collection' });
@@ -543,6 +851,24 @@ app.post('/api/collection', requireAuth, async (req, res) => {
             });
         }
 
+        // Check if user can add these cards (limit check)
+        const limitCheck = await checkUserCanAddCards(
+            req.supabaseClient,
+            req.user?.id,
+            uniqueNames.length
+        );
+
+        if (!limitCheck.canAdd) {
+            return res.status(403).json({
+                error: 'Card limit exceeded',
+                message: `You can only add ${limitCheck.remaining} more card(s). You tried to add ${uniqueNames.length}.`,
+                currentCount: limitCheck.currentCount,
+                limit: limitCheck.limit,
+                remaining: limitCheck.remaining,
+                wouldExceedBy: limitCheck.wouldExceedBy
+            });
+        }
+
         const collection = await loadCollection(req.supabaseClient, req.user?.id);
         const results = [];
         const errors = [];
@@ -579,13 +905,18 @@ app.post('/api/collection', requireAuth, async (req, res) => {
             }
         }
 
-        const updatedCollection = await loadCollection(req.supabaseClient, req.user?.id);
+        const [finalCount, userLimit] = await Promise.all([
+            getUserCardCount(req.supabaseClient, req.user?.id),
+            getUserCardLimit(req.supabaseClient, req.user?.id)
+        ]);
 
         res.json({
             added: results,
             errors,
             skipped,
-            totalInCollection: updatedCollection.length
+            totalInCollection: finalCount,
+            limit: userLimit,
+            remaining: userLimit - finalCount
         });
     } catch (error) {
         console.error('Error adding cards to collection:', error);
@@ -603,11 +934,16 @@ app.delete('/api/collection/:name', requireAuth, async (req, res) => {
             return res.status(404).json({ error: 'Card not found in collection' });
         }
 
-        const collection = await loadCollection(req.supabaseClient, req.user?.id);
+        const [cardCount, userLimit] = await Promise.all([
+            getUserCardCount(req.supabaseClient, req.user?.id),
+            getUserCardLimit(req.supabaseClient, req.user?.id)
+        ]);
 
         res.json({
             message: 'Card removed successfully',
-            totalInCollection: collection.length
+            totalInCollection: cardCount,
+            limit: userLimit,
+            remaining: userLimit - cardCount
         });
     } catch (error) {
         console.error('Error removing card from collection:', error);
@@ -618,8 +954,24 @@ app.delete('/api/collection/:name', requireAuth, async (req, res) => {
 // Clear entire collection
 app.delete('/api/collection', requireAuth, async (req, res) => {
     try {
-        await saveCollection(req.supabaseClient, req.user?.id, []);
-        res.json({ message: 'Collection cleared successfully' });
+        if (USE_SUPABASE && req.supabaseClient && req.user?.id) {
+            const { error } = await req.supabaseClient
+                .from('user_collections')
+                .delete()
+                .eq('user_id', req.user.id);
+            if (error) throw error;
+        } else {
+            await saveCollection(req.supabaseClient, req.user?.id, []);
+        }
+
+        const userLimit = await getUserCardLimit(req.supabaseClient, req.user?.id);
+
+        res.json({
+            message: 'Collection cleared successfully',
+            totalInCollection: 0,
+            limit: userLimit,
+            remaining: userLimit
+        });
     } catch (error) {
         console.error('Error clearing collection:', error);
         res.status(500).json({ error: 'Failed to clear collection' });
@@ -670,30 +1022,38 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
         const { data: users } = await client.auth.admin.listUsers();
         const totalUsers = users?.users?.length || 0;
 
-        // Get total cards across all users
-        const { count: totalCards } = await client
-            .from('cards')
+        // Get total cards in all collections
+        const { count: totalCollections } = await client
+            .from('user_collections')
+            .select('*', { count: 'exact', head: true });
+
+        // Get total unique cards in master_cards
+        const { count: totalMasterCards } = await client
+            .from('master_cards')
             .select('*', { count: 'exact', head: true });
 
         // Get total admins
         const { data: admins } = await client.from('admins').select('user_id');
         const totalAdmins = admins?.length || 0;
 
-        // Get unique card names
-        const { data: cardData } = await client
-            .from('cards')
-            .select('card_data');
-
-        const uniqueCardNames = new Set(
-            cardData?.map(c => c.card_data?.name?.toLowerCase()) || []
-        );
+        // Calculate storage savings
+        const avgCardSize = 3000; // bytes (optimized)
+        const oldSchemaSize = totalCollections * 8000;
+        const newSchemaSize = (totalMasterCards * avgCardSize) + (totalCollections * 40);
+        const spaceSavings = oldSchemaSize > 0 ? ((oldSchemaSize - newSchemaSize) / oldSchemaSize * 100).toFixed(1) : 0;
 
         res.json({
             totalUsers,
-            totalCards,
+            totalCards: totalCollections,
+            uniqueCards: totalMasterCards,
             totalAdmins,
-            uniqueCards: uniqueCardNames.size,
-            averageCardsPerUser: totalUsers > 0 ? (totalCards / totalUsers).toFixed(2) : 0
+            averageCardsPerUser: totalUsers > 0 ? (totalCollections / totalUsers).toFixed(2) : 0,
+            storage: {
+                old_schema_mb: (oldSchemaSize / 1024 / 1024).toFixed(2),
+                new_schema_mb: (newSchemaSize / 1024 / 1024).toFixed(2),
+                savings_percentage: spaceSavings,
+                savings_mb: ((oldSchemaSize - newSchemaSize) / 1024 / 1024).toFixed(2)
+            }
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -762,21 +1122,76 @@ app.get('/api/admin/user/:userId/collection', requireAdmin, async (req, res) => 
         const { userId } = req.params;
         const client = req.supabaseClient;
 
-        const { data, error } = await client
-            .from('cards')
-            .select('card_data, created_at')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: true });
-
-        if (error) throw error;
+        const result = await loadCollectionPaginated(client, userId, {
+            limit: parseInt(req.query.limit) || 100,
+            offset: parseInt(req.query.offset) || 0
+        });
 
         res.json({
             userId,
-            cards: data ? data.map(row => row.card_data) : [],
-            totalCards: data?.length || 0
+            ...result
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+});
+
+// ====================
+// USER LIMIT ROUTES (Admin)
+// ====================
+
+// Get user's limit info (for viewing in admin panel)
+app.get('/api/user/limit', requireAuth, async (req, res) => {
+    try {
+        const [limit, count] = await Promise.all([
+            getUserCardLimit(req.supabaseClient, req.user?.id),
+            getUserCardCount(req.supabaseClient, req.user?.id)
+        ]);
+
+        res.json({
+            max_cards: limit,
+            current_count: count,
+            remaining: limit - count,
+            usage_percentage: Math.round((count / limit) * 100)
+        });
+    } catch (error) {
+        console.error('Error getting user limit:', error);
+        res.status(500).json({ error: 'Failed to get user limit' });
+    }
+});
+
+// Update user's card limit (admin only)
+app.put('/api/admin/users/:userId/limit', requireAdmin, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { max_cards, reason } = req.body;
+
+        if (typeof max_cards !== 'number' || max_cards < 1) {
+            return res.status(400).json({
+                error: 'max_cards must be a positive number'
+            });
+        }
+
+        if (max_cards > 50000) {
+            return res.status(400).json({
+                error: 'max_cards cannot exceed 50,000'
+            });
+        }
+
+        const updated = await updateUserLimit(
+            req.supabaseClient,
+            userId,
+            max_cards,
+            reason || null
+        );
+
+        res.json({
+            message: 'User limit updated successfully',
+            limit: updated
+        });
+    } catch (error) {
+        console.error('Error updating user limit:', error);
+        res.status(500).json({ error: 'Failed to update user limit' });
     }
 });
 
