@@ -369,37 +369,7 @@ window.removeUserAdmin = async function(userId, email) {
  * Shows admin tab and dropdown menu item if user is admin
  */
 export async function initAdmin() {
-    const adminCheck = await checkAdminStatus();
-
-    if (adminCheck) {
-        // Show admin tab button
-        const adminTabBtn = document.getElementById('adminTabBtn');
-        if (adminTabBtn) {
-            adminTabBtn.classList.remove('hidden');
-        }
-
-        // Show admin button in dropdown menu
-        const adminPanelBtn = document.getElementById('adminPanelBtn');
-        if (adminPanelBtn) {
-            adminPanelBtn.classList.remove('hidden');
-            adminPanelBtn.addEventListener('click', () => {
-                showAdminPanel();
-                // Close dropdown after clicking
-                document.getElementById('userDropdown').classList.add('hidden');
-                userMenuToggle.classList.remove('open');
-            });
-        }
-
-        // Setup admin subtabs
-        document.querySelectorAll('.admin-subtab-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const subtabName = e.target.getAttribute('data-subtab');
-                switchAdminSubtab(subtabName);
-            });
-        });
-    }
-
-    // Setup user menu toggle
+    // Setup user menu toggle first (needed by admin panel button)
     const userMenuToggle = document.getElementById('userMenuToggle');
     const userDropdown = document.getElementById('userDropdown');
 
@@ -417,6 +387,41 @@ export async function initAdmin() {
                 userDropdown.classList.add('hidden');
                 userMenuToggle.classList.remove('open');
             }
+        });
+    }
+
+    // Check admin status and setup admin features
+    const adminCheck = await checkAdminStatus();
+
+    if (adminCheck) {
+        // Show admin tab button
+        const adminTabBtn = document.getElementById('adminTabBtn');
+        if (adminTabBtn) {
+            adminTabBtn.classList.remove('hidden');
+        }
+
+        // Show admin button in dropdown menu
+        const adminPanelBtn = document.getElementById('adminPanelBtn');
+        if (adminPanelBtn) {
+            adminPanelBtn.classList.remove('hidden');
+            adminPanelBtn.addEventListener('click', () => {
+                showAdminPanel();
+                // Close dropdown after clicking
+                if (userDropdown) {
+                    userDropdown.classList.add('hidden');
+                }
+                if (userMenuToggle) {
+                    userMenuToggle.classList.remove('open');
+                }
+            });
+        }
+
+        // Setup admin subtabs
+        document.querySelectorAll('.admin-subtab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const subtabName = e.target.getAttribute('data-subtab');
+                switchAdminSubtab(subtabName);
+            });
         });
     }
 }
