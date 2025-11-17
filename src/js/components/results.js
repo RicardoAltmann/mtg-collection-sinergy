@@ -133,7 +133,7 @@ export function displayResults(synergies, errors) {
             </div>
             <div class="filter-group">
                 <div class="filter-buttons">
-                    <button class="filter-btn ${activeTypeFilter === 'all' ? 'active' : ''}" onclick="window.filterByTypeUI('all', event)">
+                    <button type="button" class="filter-btn ${activeTypeFilter === 'all' ? 'active' : ''}" onclick="window.filterByTypeUI('all', event)">
                         🔮 Todas (${synergies.length})
                     </button>
                     ${cardTypes.map(type => {
@@ -147,7 +147,7 @@ export function displayResults(synergies, errors) {
                             'land': '🏔️'
                         };
                         return `
-                        <button class="filter-btn ${activeTypeFilter === type.key ? 'active' : ''}" onclick="window.filterByTypeUI('${type.key}', event)">
+                        <button type="button" class="filter-btn ${activeTypeFilter === type.key ? 'active' : ''}" onclick="window.filterByTypeUI('${type.key}', event)">
                             ${icons[type.key] || '📜'} ${type.name} (${type.count})
                         </button>
                     `}).join('')}
