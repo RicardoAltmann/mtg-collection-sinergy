@@ -95,6 +95,7 @@
             <button class="tab-btn active" data-tab="analyze">Analizar Sinergia</button>
             <button class="tab-btn" data-tab="collection">Mi Colección</button>
             <button class="tab-btn" data-tab="add">Agregar Cartas</button>
+            <button id="adminTabBtn" class="tab-btn hidden" data-tab="admin">🛡️ Panel Admin</button>
         </div>
 
         <!-- Analyze Tab -->
@@ -206,6 +207,28 @@
             </div>
 
             <div id="addResults"></div>
+        </div>
+
+        <!-- Admin Tab -->
+        <div id="adminTab" class="tab-content">
+            <div class="input-section">
+                <h2>🛡️ Panel de Administración</h2>
+
+                <div class="admin-tabs-container">
+                    <div class="admin-subtabs">
+                        <button class="admin-subtab-btn active" data-subtab="stats">Estadísticas</button>
+                        <button class="admin-subtab-btn" data-subtab="users">Usuarios</button>
+                    </div>
+
+                    <div id="adminStatsSubtab" class="admin-subtab-content active">
+                        <div class="loading">Cargando estadísticas...</div>
+                    </div>
+
+                    <div id="adminUsersSubtab" class="admin-subtab-content">
+                        <div class="loading">Cargando usuarios...</div>
+                    </div>
+                </div>
+            </div>
         </div>
         </div>
         <!-- End mainApp -->
