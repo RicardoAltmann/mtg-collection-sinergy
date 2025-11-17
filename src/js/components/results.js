@@ -416,19 +416,31 @@ export function filterByType(type, event) {
 }
 
 export function toggleViewMode(view, event) {
-    if (viewMode === view) return;
+    console.log('[toggleViewMode] Called with view:', view, 'Current mode:', viewMode);
+
+    if (viewMode === view) {
+        console.log('[toggleViewMode] Already in', view, 'mode, skipping');
+        return;
+    }
+
     viewMode = view;
+    console.log('[toggleViewMode] Switched to', view, 'mode');
 
     const filtered = getFilteredSynergies();
+    console.log('[toggleViewMode] Filtered synergies count:', filtered.length);
 
     const filteredDiv = document.getElementById('filteredResults');
     if (filteredDiv) {
         filteredDiv.innerHTML = renderFilteredResults(filtered);
+        console.log('[toggleViewMode] Results re-rendered');
+    } else {
+        console.warn('[toggleViewMode] filteredResults div not found!');
     }
 
     document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
     if (event && event.target) {
         event.target.classList.add('active');
+        console.log('[toggleViewMode] Active button updated');
     }
 }
 
