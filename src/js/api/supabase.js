@@ -28,19 +28,35 @@ export async function initAuth() {
         currentUser = session.user;
         sessionToken = session.access_token;
         logger.info('User session restored:', currentUser.email);
+
+        // Import and show main app
+        const { showMainApp } = await import('../components/auth.js');
+        showMainApp();
     } else {
         logger.info('No existing session found');
+
+        // Import and show auth forms
+        const { showAuthForms } = await import('../components/auth.js');
+        showAuthForms();
     }
 
     // Listen for auth changes
-    supabaseClient.auth.onAuthStateChange((event, session) => {
+    supabaseClient.auth.onAuthStateChange(async (event, session) => {
         logger.info('Auth state change:', event);
         if (session) {
             currentUser = session.user;
             sessionToken = session.access_token;
+
+            // Show main app on sign in
+            const { showMainApp } = await import('../components/auth.js');
+            showMainApp();
         } else {
             currentUser = null;
             sessionToken = null;
+
+            // Show auth forms on sign out
+            const { showAuthForms } = await import('../components/auth.js');
+            showAuthForms();
         }
     });
 }

@@ -149,13 +149,6 @@ function initEventListeners() {
     window.addEventListener('DOMContentLoaded', () => {
         logger.info('DOM loaded, setting up event listeners...');
 
-        // Load collection if not using auth
-        if (!isAuthEnabled()) {
-            loadCollection().catch(error => {
-                logger.error('Failed to load collection on startup:', error);
-            });
-        }
-
         // Tab navigation
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
