@@ -46,6 +46,7 @@ import {
 } from './components/fileImport.js';
 import { filterByType } from './components/results.js';
 import { showOnboarding, closeOnboarding, showDemoModeMessage } from './components/onboarding.js';
+import { addCards } from './components/addCards.js';
 
 // Synergy engine
 import {
@@ -153,6 +154,115 @@ function initEventListeners() {
             loadCollection().catch(error => {
                 logger.error('Failed to load collection on startup:', error);
             });
+        }
+
+        // Tab navigation
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const tabName = e.target.getAttribute('data-tab');
+                switchTab(tabName, e);
+            });
+        });
+
+        // Auth tab switching
+        const loginTab = document.getElementById('loginTab');
+        const registerTab = document.getElementById('registerTab');
+        if (loginTab) loginTab.addEventListener('click', () => switchAuthTab('login'));
+        if (registerTab) registerTab.addEventListener('click', () => switchAuthTab('register'));
+
+        // Login form
+        const loginEmailInput = document.getElementById('loginEmail');
+        const loginPasswordInput = document.getElementById('loginPassword');
+        const loginBtn = document.getElementById('loginBtn');
+
+        if (loginEmailInput) {
+            loginEmailInput.addEventListener('input', () => {
+                validateEmail(loginEmailInput, 'loginEmailValidation');
+            });
+        }
+        if (loginPasswordInput) {
+            loginPasswordInput.addEventListener('input', validateLoginPassword);
+        }
+        if (loginBtn) {
+            loginBtn.addEventListener('click', login);
+        }
+
+        // Register form
+        const registerEmailInput = document.getElementById('registerEmail');
+        const registerPasswordInput = document.getElementById('registerPassword');
+        const registerBtn = document.getElementById('registerBtn');
+
+        if (registerEmailInput) {
+            registerEmailInput.addEventListener('input', () => {
+                validateEmail(registerEmailInput, 'registerEmailValidation');
+            });
+        }
+        if (registerPasswordInput) {
+            registerPasswordInput.addEventListener('input', validateRegisterPassword);
+        }
+        if (registerBtn) {
+            registerBtn.addEventListener('click', register);
+        }
+
+        // Logout button
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', logout);
+        }
+
+        // Analyze button
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        if (analyzeBtn) {
+            analyzeBtn.addEventListener('click', analyzesynergy);
+        }
+
+        // Add cards button
+        const addBtn = document.getElementById('addBtn');
+        if (addBtn) {
+            addBtn.addEventListener('click', addCards);
+        }
+
+        // Add card from autocomplete button
+        const addCardFromAutocompleteBtn = document.getElementById('addCardFromAutocompleteBtn');
+        if (addCardFromAutocompleteBtn) {
+            addCardFromAutocompleteBtn.addEventListener('click', addCardFromAutocomplete);
+        }
+
+        // Clear collection button
+        const clearCollectionBtn = document.getElementById('clearCollectionBtn');
+        if (clearCollectionBtn) {
+            clearCollectionBtn.addEventListener('click', async () => {
+                if (confirm('¿Seguro que quieres eliminar todas las cartas de tu colección?')) {
+                    try {
+                        const { clearCollection } = await import('./api/collection.js');
+                        await clearCollection();
+                        // Reload and refresh UI
+                        await loadCollection();
+                        updateCollectionCount();
+                        filterCollection();
+                    } catch (error) {
+                        logger.error('Error clearing collection:', error);
+                        alert('Error al limpiar la colección: ' + error.message);
+                    }
+                }
+            });
+        }
+
+        // Search and sort collection
+        const searchInput = document.getElementById('searchCollection');
+        const sortSelect = document.getElementById('sortCollection');
+
+        if (searchInput) {
+            searchInput.addEventListener('input', filterCollection);
+        }
+        if (sortSelect) {
+            sortSelect.addEventListener('change', filterCollection);
+        }
+
+        // Onboarding modal
+        const closeOnboardingBtn = document.getElementById('closeOnboardingBtn');
+        if (closeOnboardingBtn) {
+            closeOnboardingBtn.addEventListener('click', closeOnboarding);
         }
 
         // Initialize autocomplete
