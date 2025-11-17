@@ -259,17 +259,43 @@ export function createCardHTML(item) {
     else if (typeLine.includes('planeswalker')) mainType = 'Planeswalker';
     else if (typeLine.includes('land')) mainType = 'Tierra';
 
+    const synergyTier = item.score >= 20
+        ? 'high'
+        : item.score >= 5
+            ? 'medium'
+            : item.score >= 0
+                ? 'low'
+                : 'offcolor';
+
+    const tierLabels = {
+        high: 'Alta sinergia',
+        medium: 'Media sinergia',
+        low: 'Sinergia baja',
+        offcolor: 'Fuera de color'
+    };
+
     return `
         <div class="card-item">
             <div class="card-header">
-                <div class="card-info">
-                    <div class="card-name">${item.card.name}</div>
-                    <div class="card-type">${item.card.type_line}</div>
-                    ${mainType ? `<span class="card-badge">${mainType}</span>` : ''}
+                <div class="card-heading">
+                    <div class="card-name-row">
+                        <div class="card-name">${item.card.name}</div>
+                        ${mainType ? `<span class="card-badge">${mainType}</span>` : ''}
+                    </div>
+                    <div class="card-subtitle">${item.card.type_line}</div>
+                    <div class="card-meta">
+                        ${item.role ? `<span class="meta-chip">Rol: ${item.role}</span>` : ''}
+                        ${item.archetype ? `<span class="meta-chip subtle">Arquetipo ${item.archetype}</span>` : ''}
+                    </div>
                 </div>
-                <span class="synergy-score">Puntaje: ${item.score}</span>
+                <div class="score-chip ${synergyTier}">
+                    <span class="score-value">${item.score}</span>
+                    <span class="score-label">${tierLabels[synergyTier]}</span>
+                </div>
             </div>
-            ${reasonsList}
+            <div class="card-body">
+                ${reasonsList}
+            </div>
         </div>
     `;
 }
