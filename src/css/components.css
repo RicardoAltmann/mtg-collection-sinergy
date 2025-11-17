@@ -577,6 +577,37 @@ button:disabled {
     content: ' ✓';
 }
 
+.view-toggle {
+    display: inline-flex;
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-full);
+    padding: 4px;
+    gap: 4px;
+}
+
+.view-btn {
+    background: transparent;
+    color: var(--text-secondary);
+    border: none;
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.view-btn:hover {
+    color: var(--text-primary);
+}
+
+.view-btn.active {
+    background: var(--color-primary);
+    color: #fff;
+    box-shadow: var(--glow-primary);
+}
+
 .sort-select {
     padding: var(--space-sm) var(--space-md);
     background: var(--color-bg-tertiary);

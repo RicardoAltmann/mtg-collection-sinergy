@@ -44,7 +44,7 @@ import {
     handleFileSelect,
     downloadTemplate
 } from './components/fileImport.js';
-import { filterByType } from './components/results.js';
+import { filterByType, toggleViewMode } from './components/results.js';
 import { showOnboarding, closeOnboarding, showDemoModeMessage } from './components/onboarding.js';
 import { addCards } from './components/addCards.js';
 import { initAdmin } from './components/admin.js';
@@ -131,6 +131,7 @@ function setupGlobalFunctions() {
     // Results functions
     window.filterByTypeUI = filterByType;
     window.toggleCollapseUI = toggleCollapse;
+    window.toggleViewModeUI = toggleViewMode;
 
     // Autocomplete functions
     window.selectSuggestionFromAutocomplete = selectSuggestion;

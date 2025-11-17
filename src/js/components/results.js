@@ -9,6 +9,7 @@ import { logger } from '../utils/logger.js';
 // Store all synergies for filtering
 let allSynergies = [];
 let activeTypeFilter = 'all';
+let viewMode = 'cards';
 let commanderData = null;
 
 /**
@@ -28,6 +29,7 @@ export function setCommanderData(data) {
  */
 export function displayResults(synergies, errors) {
     allSynergies = synergies;
+    activeTypeFilter = 'all';
     const resultsDiv = document.getElementById('results');
 
     logger.info('Displaying results:', synergies.length, 'cards');
@@ -114,9 +116,19 @@ export function displayResults(synergies, errors) {
         <div class="filters">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <label style="margin: 0;">Filtrar por tipo de carta:</label>
-                <div id="filterCounter" style="background: rgba(243, 156, 18, 0.2); padding: 8px 16px; border-radius: 6px; border: 2px solid #f39c12;">
-                    <strong style="color: #f39c12;">${synergies.length}</strong>
-                    <span style="color: #95a5a6;"> carta${synergies.length !== 1 ? 's' : ''} mostrada${synergies.length !== 1 ? 's' : ''}</span>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="view-toggle" role="group" aria-label="Cambiar vista de resultados">
+                        <button class="view-btn ${viewMode === 'cards' ? 'active' : ''}" onclick="window.toggleViewModeUI('cards', event)">
+                            🔳 Tarjetas
+                        </button>
+                        <button class="view-btn ${viewMode === 'list' ? 'active' : ''}" onclick="window.toggleViewModeUI('list', event)">
+                            📃 Lista
+                        </button>
+                    </div>
+                    <div id="filterCounter" style="background: rgba(243, 156, 18, 0.2); padding: 8px 16px; border-radius: 6px; border: 2px solid #f39c12;">
+                        <strong style="color: #f39c12;">${synergies.length}</strong>
+                        <span style="color: #95a5a6;"> carta${synergies.length !== 1 ? 's' : ''} mostrada${synergies.length !== 1 ? 's' : ''}</span>
+                    </div>
                 </div>
             </div>
             <div class="filter-group">
@@ -145,7 +157,7 @@ export function displayResults(synergies, errors) {
     `;
 
     html += '<div id="filteredResults">';
-    html += renderFilteredResults(synergies);
+    html += renderFilteredResults(getFilteredSynergies());
     html += '</div>';
 
     resultsDiv.innerHTML = html;
@@ -167,18 +179,18 @@ export function renderFilteredResults(synergies) {
 
     if (highSynergy.length > 0) {
         html += '<h2 style="color: #27ae60; margin: 20px 0;">🔥 Alta Sinergia</h2>';
-        html += '<div class="synergy-list">';
+        html += `<div class="synergy-list ${viewMode === 'list' ? 'list-view' : ''}">`;
         highSynergy.forEach(item => {
-            html += createCardHTML(item);
+            html += renderCardByMode(item);
         });
         html += '</div>';
     }
 
     if (mediumSynergy.length > 0) {
         html += '<h2 style="color: #f39c12; margin: 20px 0;">⚡ Media Sinergia</h2>';
-        html += '<div class="synergy-list">';
+        html += `<div class="synergy-list ${viewMode === 'list' ? 'list-view' : ''}">`;
         mediumSynergy.forEach(item => {
-            html += createCardHTML(item);
+            html += renderCardByMode(item);
         });
         html += '</div>';
     }
@@ -192,10 +204,10 @@ export function renderFilteredResults(synergies) {
                     <span class="collapsible-toggle" id="lowSynergy-toggle">▼</span>
                 </div>
                 <div class="collapsible-content" id="lowSynergy-content">
-                    <div class="synergy-list" style="margin-top: 15px;">
+                    <div class="synergy-list ${viewMode === 'list' ? 'list-view' : ''}" style="margin-top: 15px;">
         `;
         lowSynergy.forEach(item => {
-            html += createCardHTML(item);
+            html += renderCardByMode(item);
         });
         html += `
                     </div>
@@ -213,10 +225,10 @@ export function renderFilteredResults(synergies) {
                     <span class="collapsible-toggle" id="outOfColor-toggle">▼</span>
                 </div>
                 <div class="collapsible-content" id="outOfColor-content">
-                    <div class="synergy-list" style="margin-top: 15px;">
+                    <div class="synergy-list ${viewMode === 'list' ? 'list-view' : ''}" style="margin-top: 15px;">
         `;
         outOfColor.forEach(item => {
-            html += createCardHTML(item);
+            html += renderCardByMode(item);
         });
         html += `
                     </div>
@@ -235,6 +247,10 @@ export function renderFilteredResults(synergies) {
     }
 
     return html;
+}
+
+function renderCardByMode(item) {
+    return viewMode === 'list' ? createListItemHTML(item) : createCardHTML(item);
 }
 
 /**
@@ -350,6 +366,17 @@ export function getCardTypes(synergies) {
         .sort((a, b) => b.count - a.count);
 }
 
+function getFilteredSynergies() {
+    if (activeTypeFilter === 'all') {
+        return allSynergies;
+    }
+
+    return allSynergies.filter(item => {
+        const typeLine = item.card.type_line.toLowerCase();
+        return typeLine.includes(activeTypeFilter);
+    });
+}
+
 /**
  * Filter results by card type
  *
@@ -361,14 +388,7 @@ export function filterByType(type, event) {
 
     logger.debug('Filtering by type:', type);
 
-    let filtered = allSynergies;
-
-    if (type !== 'all') {
-        filtered = allSynergies.filter(item => {
-            const typeLine = item.card.type_line.toLowerCase();
-            return typeLine.includes(type);
-        });
-    }
+    const filtered = getFilteredSynergies();
 
     logger.info('Filtered results:', filtered.length, 'cards');
 
@@ -390,6 +410,23 @@ export function filterByType(type, event) {
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.classList.remove('active');
     });
+    if (event && event.target) {
+        event.target.classList.add('active');
+    }
+}
+
+export function toggleViewMode(view, event) {
+    if (viewMode === view) return;
+    viewMode = view;
+
+    const filtered = getFilteredSynergies();
+
+    const filteredDiv = document.getElementById('filteredResults');
+    if (filteredDiv) {
+        filteredDiv.innerHTML = renderFilteredResults(filtered);
+    }
+
+    document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
     if (event && event.target) {
         event.target.classList.add('active');
     }
