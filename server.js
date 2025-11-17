@@ -60,6 +60,76 @@ async function rateLimitedFetch(url) {
     return fetch(url);
 }
 
+// EDHRec cache (in-memory, 24 hour TTL)
+const edhrecCache = new Map();
+const EDHREC_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+function parseEDHRecData(raw) {
+    const topCards = [];
+    const highSynergy = [];
+
+    try {
+        const cardlists = raw?.container?.json_dict?.cardlists || [];
+
+        cardlists.forEach(list => {
+            const header = list.header || '';
+            const cardviews = list.cardviews || [];
+
+            if (header.includes('Top Cards')) {
+                cardviews.forEach(c => {
+                    topCards.push({
+                        name: c.name.toLowerCase(),
+                        inclusion: c.num_decks || 0,
+                        synergy: c.synergy || 0
+                    });
+                });
+            }
+
+            if (header.includes('High Synergy')) {
+                cardviews.forEach(c => {
+                    highSynergy.push({
+                        name: c.name.toLowerCase(),
+                        synergy: c.synergy || 0
+                    });
+                });
+            }
+        });
+    } catch (e) {
+        console.warn('EDHRec parsing error:', e);
+    }
+
+    return { topCards, highSynergy };
+}
+
+async function fetchEDHRecDataFromAPI(commanderSlug) {
+    try {
+        const url = `https://json.edhrec.com/commanders/${commanderSlug}.json`;
+        console.log(`Fetching EDHRec data for: ${commanderSlug}`);
+
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            throw new Error(`EDHRec returned ${response.status}`);
+        }
+
+        const data = await response.json();
+        const parsed = parseEDHRecData(data);
+
+        // Cache it
+        edhrecCache.set(commanderSlug, {
+            data: parsed,
+            timestamp: Date.now()
+        });
+
+        console.log(`✓ EDHRec data cached for ${commanderSlug}: ${parsed.topCards.length} top cards, ${parsed.highSynergy.length} high synergy`);
+
+        return parsed;
+    } catch (error) {
+        console.error('EDHRec fetch failed:', error);
+        throw error;
+    }
+}
+
 // Collection storage functions - work with both Supabase and local file
 async function loadCollection(supabaseClient) {
     if (USE_SUPABASE && supabaseClient) {
@@ -219,6 +289,39 @@ app.post('/api/cards/batch', async (req, res) => {
         res.json({ results, errors });
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+});
+
+// EDHRec endpoint - Get synergy data for a commander
+app.get('/api/edhrec/:commanderSlug', async (req, res) => {
+    try {
+        const { commanderSlug } = req.params;
+
+        // Check cache first
+        const cached = edhrecCache.get(commanderSlug);
+        if (cached && (Date.now() - cached.timestamp < EDHREC_CACHE_TTL)) {
+            console.log(`EDHRec cache hit: ${commanderSlug}`);
+            return res.json({
+                ...cached.data,
+                cached: true
+            });
+        }
+
+        // Fetch from EDHRec
+        const data = await fetchEDHRecDataFromAPI(commanderSlug);
+
+        res.json({
+            ...data,
+            cached: false
+        });
+    } catch (error) {
+        console.error('EDHRec endpoint error:', error);
+        res.status(500).json({
+            error: 'EDHRec data unavailable',
+            message: error.message,
+            topCards: [],
+            highSynergy: []
+        });
     }
 });
 

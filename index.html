@@ -2177,8 +2177,22 @@
                 // Use the collection data directly
                 cardCollection = allCollectionData;
 
-                // Analyze synergies
-                const synergies = calculateSynergies();
+                // === FASE 2.5: Fetch EDHRec data ===
+                resultsDiv.innerHTML = `
+                    <div class="loading">
+                        🌐 Obteniendo datos de EDHRec para ${commanderData.name}...
+                    </div>
+                `;
+                const edhrecData = await fetchEDHRecData(commanderData.name);
+
+                resultsDiv.innerHTML = `
+                    <div class="loading">
+                        🧮 Calculando sinergias con análisis avanzado...
+                    </div>
+                `;
+
+                // Analyze synergies with EDHRec data
+                const synergies = calculateSynergies(edhrecData);
                 displayResults(synergies, []);
 
             } catch (error) {
@@ -2234,22 +2248,179 @@
             'heliod, sun-crowned': ['walking ballista']
         };
 
+        // === FASE 2.5: DICCIONARIO DE CONCEPTOS SEMÁNTICOS ===
+        const SYNERGY_CONCEPTS = {
+            card_advantage: {
+                keywords: [
+                    'draw', 'draws', 'drawing',
+                    'look at the top',
+                    'reveal.*card',
+                    'search your library',
+                    'scry', 'surveil'
+                ],
+                score: 10,
+                description: 'generación de ventaja de cartas'
+            },
+
+            mana_ramp: {
+                keywords: [
+                    'search.*land', 'search.*basic',
+                    'search your library for a.*land',
+                    'add \\{c\\}', 'add \\{w\\}', 'add \\{u\\}', 'add \\{b\\}', 'add \\{r\\}', 'add \\{g\\}',
+                    'add one mana', 'add two mana', 'add three mana',
+                    'untap.*land',
+                    'put.*land.*battlefield'
+                ],
+                score: 12,
+                description: 'aceleración de maná'
+            },
+
+            token_generation: {
+                keywords: [
+                    'create.*token',
+                    'put.*token.*battlefield',
+                    'populate',
+                    'copy.*creature'
+                ],
+                score: 10,
+                description: 'generación de tokens'
+            },
+
+            graveyard_recursion: {
+                keywords: [
+                    'return.*from.*graveyard',
+                    'return.*graveyard.*battlefield',
+                    'return.*graveyard.*hand',
+                    'reanimate', 'unearth', 'flashback',
+                    'escape', 'disturb', 'embalm', 'eternalize'
+                ],
+                score: 12,
+                description: 'recursión de cementerio'
+            },
+
+            sacrifice_outlet: {
+                keywords: [
+                    'sacrifice',
+                    'as an additional cost',
+                    'dies', 'when.*dies', 'whenever.*dies'
+                ],
+                score: 12,
+                description: 'mecánicas de sacrificio'
+            },
+
+            counter_theme: {
+                keywords: [
+                    '\\+1/\\+1 counter',
+                    'proliferate',
+                    'adapt', 'monstrosity', 'bolster',
+                    'put.*counter'
+                ],
+                score: 18,
+                description: 'tema de contadores'
+            },
+
+            lifegain_theme: {
+                keywords: [
+                    'gain.*life', 'you gain',
+                    'whenever you gain life',
+                    'lifelink',
+                    'extort'
+                ],
+                score: 10,
+                description: 'tema de ganancia de vida'
+            },
+
+            artifact_synergy: {
+                keywords: [
+                    'artifact you control',
+                    'whenever.*artifact enters',
+                    'sacrifice an artifact',
+                    'affinity for artifacts',
+                    'improvise'
+                ],
+                score: 12,
+                description: 'sinergia con artefactos'
+            },
+
+            enchantment_synergy: {
+                keywords: [
+                    'enchantment you control',
+                    'whenever.*enchantment enters',
+                    'constellation',
+                    'enchant'
+                ],
+                score: 12,
+                description: 'sinergia con encantamientos'
+            },
+
+            spellslinger: {
+                keywords: [
+                    'whenever you cast an instant',
+                    'whenever you cast a sorcery',
+                    'instant or sorcery',
+                    'prowess', 'storm',
+                    'magecraft', 'copy.*instant', 'copy.*sorcery'
+                ],
+                score: 15,
+                description: 'tema de instant/sorcery'
+            },
+
+            etb_triggers: {
+                keywords: [
+                    'enters the battlefield',
+                    'when.*enters', 'whenever.*enters',
+                    'blink', 'flicker'
+                ],
+                score: 10,
+                description: 'disparadores de entrar al campo'
+            },
+
+            combat_matters: {
+                keywords: [
+                    'whenever.*attacks',
+                    'whenever.*deals combat damage',
+                    'combat damage to a player',
+                    'exalted', 'battle cry'
+                ],
+                score: 12,
+                description: 'estrategia de combate'
+            },
+
+            discard_matters: {
+                keywords: [
+                    'discard',
+                    'whenever.*discard',
+                    'madness', 'cycling',
+                    'hellbent'
+                ],
+                score: 10,
+                description: 'mecánicas de descarte'
+            },
+
+            mill_matters: {
+                keywords: [
+                    'mill', 'put.*cards.*graveyard.*library',
+                    'whenever.*card.*put into.*graveyard'
+                ],
+                score: 10,
+                description: 'mecánicas de mill'
+            },
+
+            tribal_support: {
+                keywords: [
+                    'shares a creature type',
+                    'choose a creature type',
+                    'of the chosen type',
+                    'tribal'
+                ],
+                score: 15,
+                description: 'soporte tribal genérico'
+            }
+        };
+
         // === FASE 2: FUNCIONES HELPER ===
 
-        // === PREPARACIÓN PARA INTEGRACIÓN CON EDHREC (FASE 2.5 - FUTURA) ===
-        /*
-         * Esta función será activada en una futura actualización cuando se implemente
-         * la integración con la API de EDHRec para obtener recomendaciones basadas
-         * en datos reales de la comunidad.
-         *
-         * Endpoint: https://json.edhrec.com/commanders/{commander-slug}.json
-         *
-         * Beneficios:
-         * - Top cards reales usadas con cada comandante
-         * - Sinergias validadas por la comunidad
-         * - Datos de popularidad y win-rate
-         * - Combos específicos por comandante
-         */
+        // === FASE 2.5: INTEGRACIÓN CON EDHREC (ACTIVA) ===
         async function fetchEDHRecData(commanderName) {
             try {
                 // Convertir nombre a slug format (lowercase, guiones)
@@ -2258,46 +2429,106 @@
                     .replace(/\s+/g, '-')
                     .replace(/[^a-z0-9-]/g, '');
 
-                // EDHRec API endpoint (requiere CORS proxy o backend)
-                // const url = `https://json.edhrec.com/commanders/${slug}.json`;
-                // const response = await fetch(url);
-                // const data = await response.json();
+                // Llamar al backend endpoint
+                const response = await fetch(`/api/edhrec/${slug}`);
 
-                // Estructura de datos esperada:
-                // {
-                //   container: {
-                //     json_dict: {
-                //       cardlists: [
-                //         { header: "Top Cards", cardviews: [...] },
-                //         { header: "High Synergy Cards", cardviews: [...] },
-                //         { header: "Creatures", cardviews: [...] }
-                //       ]
-                //     }
-                //   }
-                // }
+                if (!response.ok) {
+                    console.warn(`EDHRec data unavailable for ${commanderName}`);
+                    return { topCards: [], highSynergy: [] };
+                }
 
-                // return data;
-                return null; // Placeholder por ahora
+                const data = await response.json();
+                console.log(`✓ EDHRec data loaded: ${data.topCards.length} top cards, ${data.highSynergy.length} high synergy`);
+
+                return data;
             } catch (error) {
-                console.warn('EDHRec data not available:', error);
-                return null;
+                console.warn('EDHRec fetch error:', error);
+                return { topCards: [], highSynergy: [] };
             }
         }
 
-        // Función helper para aplicar boost basado en EDHRec
+        // Función para aplicar boost basado en EDHRec
         function applyEDHRecBoost(card, edhrecData) {
-            if (!edhrecData) return 0;
+            if (!edhrecData || (!edhrecData.topCards?.length && !edhrecData.highSynergy?.length)) {
+                return { boost: 0, reasons: [] };
+            }
 
+            const cardName = card.name.toLowerCase();
             let boost = 0;
-            // Si la carta está en el top 50 de EDHRec para este comandante
-            // boost += 20;
+            const reasons = [];
 
-            // Si tiene alta sinergia según EDHRec
-            // boost += 15;
+            // High synergy cards (mayor prioridad)
+            const synergyCard = edhrecData.highSynergy.find(c => c.name === cardName);
+            if (synergyCard) {
+                boost += 25;
+                reasons.push('✓ Alta sinergia según EDHRec (+25)');
+            }
 
-            return boost;
+            // Top cards (normalizado por percentil)
+            const topCard = edhrecData.topCards.find(c => c.name === cardName);
+            if (topCard && edhrecData.topCards.length > 0) {
+                // Calcular percentil
+                const maxInclusion = Math.max(...edhrecData.topCards.map(c => c.inclusion));
+                if (maxInclusion > 0) {
+                    const percentile = topCard.inclusion / maxInclusion;
+
+                    // Top 10% = +20, top 25% = +15, top 50% = +10, resto = +5
+                    if (percentile >= 0.9) {
+                        boost += 20;
+                        reasons.push('✓ Top 10% EDHRec (+20)');
+                    } else if (percentile >= 0.75) {
+                        boost += 15;
+                        reasons.push('✓ Top 25% EDHRec (+15)');
+                    } else if (percentile >= 0.5) {
+                        boost += 10;
+                        reasons.push('✓ Top 50% EDHRec (+10)');
+                    } else {
+                        boost += 5;
+                        reasons.push('✓ Popular en EDHRec (+5)');
+                    }
+                }
+            }
+
+            return { boost, reasons };
         }
-        // === FIN DE PREPARACIÓN EDHREC ===
+
+        // === FASE 2.5: ANÁLISIS SEMÁNTICO DE CONCEPTOS ===
+        function detectConceptSynergies(card, commanderData) {
+            const cardText = (card.oracle_text || '').toLowerCase();
+            const commanderText = (commanderData.oracle_text || '').toLowerCase();
+
+            let totalScore = 0;
+            const matchedConcepts = [];
+
+            Object.entries(SYNERGY_CONCEPTS).forEach(([conceptName, concept]) => {
+                let commanderMatches = false;
+                let cardMatches = false;
+
+                // Check if commander cares about this concept
+                concept.keywords.forEach(keyword => {
+                    try {
+                        const regex = new RegExp(keyword, 'i');
+                        if (regex.test(commanderText)) commanderMatches = true;
+                        if (regex.test(cardText)) cardMatches = true;
+                    } catch (e) {
+                        // Regex inválido, skip
+                        console.warn(`Invalid regex: ${keyword}`, e);
+                    }
+                });
+
+                // If both match, it's a synergy!
+                if (commanderMatches && cardMatches) {
+                    totalScore += concept.score;
+                    matchedConcepts.push({
+                        name: conceptName,
+                        description: concept.description,
+                        score: concept.score
+                    });
+                }
+            });
+
+            return { totalScore, matchedConcepts };
+        }
 
         // Contar símbolos de mana de colores específicos (para devotion, chroma, etc)
         function countColorPips(manaCost, targetColors) {
@@ -2560,7 +2791,154 @@
             }
         };
 
-        function calculateSynergies() {
+        // === FASE 2.5: ANÁLISIS DE BALANCE DE ROLES ===
+        function analyzeCollectionBalance(scoredCards, archetype) {
+            // Contar distribución de roles
+            const roleCount = {};
+            const cmcDistribution = { low: 0, mid: 0, high: 0 };
+
+            scoredCards.forEach(({ card, score, role }) => {
+                if (score < 0) return; // Skip out-of-color
+
+                roleCount[role] = (roleCount[role] || 0) + 1;
+
+                const cmc = card.cmc || 0;
+                if (cmc <= 2) cmcDistribution.low++;
+                else if (cmc <= 5) cmcDistribution.mid++;
+                else cmcDistribution.high++;
+            });
+
+            // Targets ideales basados en arquetipo
+            const idealRoles = {
+                ramp: { min: 8, max: 14 },
+                card_draw: { min: 8, max: 12 },
+                removal: { min: 5, max: 10 },
+                board_wipes: { min: 2, max: 5 }
+            };
+
+            // Ajustar según arquetipo
+            if (archetype === 'aggro') {
+                idealRoles.ramp.max = 10;
+                idealRoles.removal.min = 3;
+            } else if (archetype === 'control') {
+                idealRoles.removal.min = 8;
+                idealRoles.board_wipes.min = 3;
+                idealRoles.card_draw.min = 10;
+            } else if (archetype === 'combo') {
+                idealRoles.ramp.min = 10;
+                idealRoles.card_draw.min = 10;
+            }
+
+            // Ajustar scores basado en balance
+            return scoredCards.map(item => {
+                let adjustment = 0;
+                const { card, role, score } = item;
+                const reasons = [...item.reasons];
+
+                // Penalizar sobrecarga o premiar déficit
+                if (idealRoles[role]) {
+                    const current = roleCount[role] || 0;
+                    if (current > idealRoles[role].max) {
+                        adjustment -= 5;
+                        reasons.push(`⚠ Ya tienes suficiente ${role} (${current}/${idealRoles[role].max})`);
+                    } else if (current < idealRoles[role].min) {
+                        adjustment += 5;
+                        reasons.push(`✓ Deck necesita más ${role} (${current}/${idealRoles[role].min})`);
+                    }
+                }
+
+                // Ajustar por curva de maná
+                const cmc = card.cmc || 0;
+                const totalCards = scoredCards.filter(s => s.score >= 0).length;
+
+                if (totalCards > 10) {
+                    if (cmc <= 2 && cmcDistribution.low / totalCards > 0.40) {
+                        adjustment -= 3;
+                        reasons.push('⚠ Curva: demasiadas cartas baratas');
+                    } else if (cmc >= 6 && cmcDistribution.high / totalCards > 0.20) {
+                        adjustment -= 3;
+                        reasons.push('⚠ Curva: demasiadas cartas caras');
+                    } else if (cmc >= 3 && cmc <= 5 && cmcDistribution.mid / totalCards < 0.25) {
+                        adjustment += 3;
+                        reasons.push('✓ Curva: necesitas mid-game');
+                    }
+                }
+
+                return {
+                    ...item,
+                    score: score + adjustment,
+                    reasons
+                };
+            });
+        }
+
+        // === FASE 2.5: ANTI-SINERGIAS MEJORADAS ===
+        function detectAdvancedAntiSynergies(card, commanderData) {
+            const cardText = (card.oracle_text || '').toLowerCase();
+            const commanderText = (commanderData.oracle_text || '').toLowerCase();
+            const penalties = [];
+
+            // 1. Commander tax increases
+            if (cardText.includes('commander tax') ||
+                (cardText.includes('costs') && cardText.includes('more to cast'))) {
+                if (commanderData.cmc >= 4) {
+                    penalties.push({ score: -10, reason: '⚠ Encarece comandante ya costoso' });
+                }
+            }
+
+            // 2. Graveyard hate vs graveyard strategies
+            if ((cardText.includes('exile') || cardText.includes('remove')) &&
+                cardText.includes('graveyard')) {
+                if (commanderText.includes('graveyard') ||
+                    commanderText.includes('return') ||
+                    commanderText.includes('flashback')) {
+                    penalties.push({ score: -12, reason: '⚠ Invalida estrategia de cementerio' });
+                }
+            }
+
+            // 3. Can't cast from graveyard
+            if (cardText.includes('can\'t cast') && cardText.includes('graveyard')) {
+                if (commanderText.includes('flashback') ||
+                    commanderText.includes('from your graveyard')) {
+                    penalties.push({ score: -15, reason: '⚠ Bloquea habilidad del comandante' });
+                }
+            }
+
+            // 4. Sacrifice own creatures vs creature commanders
+            if (cardText.includes('sacrifice') && cardText.includes('creature') &&
+                (commanderData.type_line || '').toLowerCase().includes('creature')) {
+                // Solo si es un requisito forzado, no un outlet
+                if (cardText.includes('sacrifice a creature') && !cardText.includes('may')) {
+                    penalties.push({ score: -5, reason: '⚠ Requiere sacrificar criaturas' });
+                }
+            }
+
+            // 5. Stax pieces that lock out our strategy
+            if (cardText.includes('players can\'t') || cardText.includes('can\'t activate')) {
+                if (commanderText.includes('activated ability')) {
+                    penalties.push({ score: -8, reason: '⚠ Bloquea habilidades activadas' });
+                }
+            }
+
+            // 6. Opposing colors/strategies
+            if (cardText.includes('destroy all artifacts')) {
+                if ((commanderData.type_line || '').toLowerCase().includes('artifact') ||
+                    commanderText.includes('artifact')) {
+                    penalties.push({ score: -10, reason: '⚠ Destruye tus propios artefactos' });
+                }
+            }
+
+            if (cardText.includes('destroy all enchantments')) {
+                if ((commanderData.type_line || '').toLowerCase().includes('enchantment') ||
+                    commanderText.includes('enchantment')) {
+                    penalties.push({ score: -10, reason: '⚠ Destruye tus propios encantamientos' });
+                }
+            }
+
+            return penalties;
+        }
+
+        function calculateSynergies(edhrecData = null) {
             const commanderColors = commanderData.color_identity || [];
             const commanderText = (commanderData.oracle_text || '').toLowerCase();
             const commanderTypes = (commanderData.type_line || '').toLowerCase();
@@ -2572,8 +2950,11 @@
             const archetypeWeights = ARCHETYPE_WEIGHTS[archetype] || ARCHETYPE_WEIGHTS.midrange;
 
             console.log(`🎯 Arquetipo detectado: ${archetype.toUpperCase()}`);
+            if (edhrecData && (edhrecData.topCards?.length > 0 || edhrecData.highSynergy?.length > 0)) {
+                console.log(`📊 EDHRec data: ${edhrecData.topCards.length} top cards, ${edhrecData.highSynergy.length} high synergy cards`);
+            }
 
-            return cardCollection.map(card => {
+            const initialResults = cardCollection.map(card => {
                 const reasons = [];
                 let score = 0;
 
@@ -2780,6 +3161,27 @@
                     }
                 });
 
+                // === FASE 2.5: ANÁLISIS SEMÁNTICO DE CONCEPTOS ===
+                const conceptSynergy = detectConceptSynergies(card, commanderData);
+                score += conceptSynergy.totalScore;
+                conceptSynergy.matchedConcepts.forEach(concept => {
+                    reasons.push(`✓ Concepto: ${concept.description} (+${concept.score})`);
+                });
+
+                // === FASE 2.5: BOOST DE EDHREC ===
+                if (edhrecData) {
+                    const edhrecBoost = applyEDHRecBoost(card, edhrecData);
+                    score += edhrecBoost.boost;
+                    reasons.push(...edhrecBoost.reasons);
+                }
+
+                // === FASE 2.5: ANTI-SINERGIAS AVANZADAS ===
+                const advancedAntiSynergies = detectAdvancedAntiSynergies(card, commanderData);
+                advancedAntiSynergies.forEach(penalty => {
+                    score += penalty.score;
+                    reasons.push(penalty.reason);
+                });
+
                 // === FASE 2: PONDERACIÓN POR ARQUETIPO ===
                 // Aplicar multiplicador según el arquetipo y el rol de la carta
                 let archetypeMultiplier = 1.0;
@@ -2807,10 +3209,16 @@
                     card: card,
                     score: score,
                     reasons: reasons,
-                    role: cardRole,  // Añadimos el rol para debugging
-                    archetype: archetype  // Y el arquetipo detectado
+                    role: cardRole,
+                    archetype: archetype
                 };
-            }).sort((a, b) => b.score - a.score);
+            });
+
+            // === FASE 2.5: ANÁLISIS DE BALANCE Y DISTRIBUCIÓN ===
+            // Aplicar ajustes basados en balance de roles y curva de maná
+            const balancedResults = analyzeCollectionBalance(initialResults, archetype);
+
+            return balancedResults.sort((a, b) => b.score - a.score);
         }
 
         function extractCreatureTypes(typeString) {
