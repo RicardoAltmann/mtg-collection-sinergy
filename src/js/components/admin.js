@@ -369,16 +369,27 @@ window.removeUserAdmin = async function(userId, email) {
  * Shows admin tab and dropdown menu item if user is admin
  */
 export async function initAdmin() {
+    console.log('[initAdmin] Starting admin initialization...');
+
     // Setup user menu toggle first (needed by admin panel button)
     const userMenuToggle = document.getElementById('userMenuToggle');
     const userDropdown = document.getElementById('userDropdown');
 
+    console.log('[initAdmin] Elements found:', {
+        userMenuToggle: !!userMenuToggle,
+        userDropdown: !!userDropdown
+    });
+
     if (userMenuToggle && userDropdown) {
+        console.log('[initAdmin] Setting up user menu toggle...');
+
         userMenuToggle.addEventListener('click', (e) => {
+            console.log('[initAdmin] User menu toggle clicked');
             e.stopPropagation();
             const isHidden = userDropdown.classList.toggle('hidden');
             // Toggle arrow rotation
             userMenuToggle.classList.toggle('open', !isHidden);
+            console.log('[initAdmin] Dropdown is now:', isHidden ? 'hidden' : 'visible');
         });
 
         // Close dropdown when clicking outside
@@ -388,10 +399,16 @@ export async function initAdmin() {
                 userMenuToggle.classList.remove('open');
             }
         });
+
+        console.log('[initAdmin] User menu toggle setup complete');
+    } else {
+        console.warn('[initAdmin] User menu elements not found!');
     }
 
     // Check admin status and setup admin features
+    console.log('[initAdmin] Checking admin status...');
     const adminCheck = await checkAdminStatus();
+    console.log('[initAdmin] Admin status:', adminCheck);
 
     if (adminCheck) {
         // Show admin tab button
@@ -424,4 +441,6 @@ export async function initAdmin() {
             });
         });
     }
+
+    console.log('[initAdmin] Admin initialization complete');
 }
