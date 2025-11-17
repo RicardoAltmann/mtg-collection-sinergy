@@ -210,6 +210,33 @@ button:disabled {
     gap: var(--space-md);
 }
 
+.synergy-list.list-view {
+    display: flex;
+    flex-direction: column;
+}
+
+.synergy-list.list-view .card-item {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: var(--space-md);
+}
+
+.synergy-list.list-view .list-item-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.synergy-list.list-view .list-body {
+    margin-top: var(--space-xs);
+}
+
+.synergy-list.list-view .list-score {
+    align-self: center;
+    min-width: 120px;
+}
+
 .card-item {
     background: linear-gradient(145deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0));
     padding: var(--space-lg);

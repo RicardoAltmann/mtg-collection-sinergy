@@ -317,6 +317,67 @@ export function createCardHTML(item) {
 }
 
 /**
+ * Create HTML for a list-style card item
+ * Provides a more compact horizontal layout for list view
+ *
+ * @param {Object} item - Synergy item object
+ * @returns {string} HTML string
+ */
+function createListItemHTML(item) {
+    const reasonsList = item.reasons.length > 0
+        ? '<ul class="synergy-reasons">' + item.reasons.map(r => `<li>${r}</li>`).join('') + '</ul>'
+        : '<p style="color: #7f8c8d;">Sin sinergia específica detectada</p>';
+
+    const typeLine = item.card.type_line.toLowerCase();
+    let mainType = '';
+    if (typeLine.includes('creature')) mainType = 'Criatura';
+    else if (typeLine.includes('instant')) mainType = 'Instantáneo';
+    else if (typeLine.includes('sorcery')) mainType = 'Conjuro';
+    else if (typeLine.includes('artifact')) mainType = 'Artefacto';
+    else if (typeLine.includes('enchantment')) mainType = 'Encantamiento';
+    else if (typeLine.includes('planeswalker')) mainType = 'Planeswalker';
+    else if (typeLine.includes('land')) mainType = 'Tierra';
+
+    const synergyTier = item.score >= 20
+        ? 'high'
+        : item.score >= 5
+            ? 'medium'
+            : item.score >= 0
+                ? 'low'
+                : 'offcolor';
+
+    const tierLabels = {
+        high: 'Alta sinergia',
+        medium: 'Media sinergia',
+        low: 'Sinergia baja',
+        offcolor: 'Fuera de color'
+    };
+
+    return `
+        <div class="card-item list-item">
+            <div class="list-item-content">
+                <div class="card-name-row">
+                    <div class="card-name">${item.card.name}</div>
+                    ${mainType ? `<span class="card-badge">${mainType}</span>` : ''}
+                </div>
+                <div class="card-subtitle">${item.card.type_line}</div>
+                <div class="card-meta">
+                    ${item.role ? `<span class="meta-chip">Rol: ${item.role}</span>` : ''}
+                    ${item.archetype ? `<span class="meta-chip subtle">Arquetipo ${item.archetype}</span>` : ''}
+                </div>
+                <div class="card-body list-body">
+                    ${reasonsList}
+                </div>
+            </div>
+            <div class="score-chip ${synergyTier} list-score">
+                <span class="score-value">${item.score}</span>
+                <span class="score-label">${tierLabels[synergyTier]}</span>
+            </div>
+        </div>
+    `;
+}
+
+/**
  * Get card types and their counts from synergies
  *
  * @param {Object[]} synergies - Array of synergy objects

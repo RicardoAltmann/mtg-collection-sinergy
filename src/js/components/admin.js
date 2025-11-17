@@ -381,26 +381,32 @@ export async function initAdmin() {
     });
 
     if (userMenuToggle && userDropdown) {
-        console.log('[initAdmin] Setting up user menu toggle...');
+        if (!userMenuToggle.dataset.toggleBound) {
+            console.log('[initAdmin] Setting up user menu toggle...');
 
-        userMenuToggle.addEventListener('click', (e) => {
-            console.log('[initAdmin] User menu toggle clicked');
-            e.stopPropagation();
-            const isHidden = userDropdown.classList.toggle('hidden');
-            // Toggle arrow rotation
-            userMenuToggle.classList.toggle('open', !isHidden);
-            console.log('[initAdmin] Dropdown is now:', isHidden ? 'hidden' : 'visible');
-        });
+            userMenuToggle.addEventListener('click', (e) => {
+                console.log('[initAdmin] User menu toggle clicked');
+                e.stopPropagation();
+                const isHidden = userDropdown.classList.toggle('hidden');
+                // Toggle arrow rotation
+                userMenuToggle.classList.toggle('open', !isHidden);
+                console.log('[initAdmin] Dropdown is now:', isHidden ? 'hidden' : 'visible');
+            });
 
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!userDropdown.contains(e.target) && !userMenuToggle.contains(e.target)) {
-                userDropdown.classList.add('hidden');
-                userMenuToggle.classList.remove('open');
-            }
-        });
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!userDropdown.contains(e.target) && !userMenuToggle.contains(e.target)) {
+                    userDropdown.classList.add('hidden');
+                    userMenuToggle.classList.remove('open');
+                }
+            });
 
-        console.log('[initAdmin] User menu toggle setup complete');
+            userMenuToggle.dataset.toggleBound = 'true';
+            userDropdown.dataset.outsideHandlerBound = 'true';
+            console.log('[initAdmin] User menu toggle setup complete');
+        } else {
+            console.log('[initAdmin] User menu toggle already initialized, skipping listener setup');
+        }
     } else {
         console.warn('[initAdmin] User menu elements not found!');
     }
