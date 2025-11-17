@@ -47,6 +47,7 @@ import {
 import { filterByType } from './components/results.js';
 import { showOnboarding, closeOnboarding, showDemoModeMessage } from './components/onboarding.js';
 import { addCards } from './components/addCards.js';
+import { initAdmin } from './components/admin.js';
 
 // Synergy engine
 import {
