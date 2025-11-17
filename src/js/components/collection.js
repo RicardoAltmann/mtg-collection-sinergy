@@ -5,7 +5,8 @@
  */
 
 import { logger } from '../utils/logger.js';
-import { getCollectionData, removeFromCollection as apiRemoveFromCollection } from '../api/collection.js';
+import { getCollectionData, removeFromCollection as apiRemoveFromCollection, getUserLimitInfo, isNearLimit } from '../api/collection.js';
+import { showLimitWarning } from './notifications.js';
 
 // UI state
 let collectionViewMode = 'list';
@@ -180,15 +181,73 @@ export function filterCollection() {
 }
 
 /**
- * Update the collection count display
+ * Update the collection count display and limit progress bar
  */
 export function updateCollectionCount() {
     const countElement = document.getElementById('collectionCount');
+    const allCollectionData = getCollectionData();
+
     if (countElement) {
-        const allCollectionData = getCollectionData();
         countElement.textContent = allCollectionData.length;
         logger.debug('Collection count updated:', allCollectionData.length);
     }
+
+    // Update limit progress bar
+    updateLimitProgressBar();
+}
+
+/**
+ * Update the limit progress bar
+ */
+export function updateLimitProgressBar() {
+    const limitInfo = getUserLimitInfo();
+    const progressContainer = document.getElementById('limitProgressContainer');
+
+    if (!progressContainer) {
+        logger.debug('Limit progress container not found, skipping update');
+        return;
+    }
+
+    const { usage_percentage, current_count, max_cards, remaining } = limitInfo;
+
+    // Determine progress bar color based on usage
+    let progressClass = 'limit-progress-normal';
+    if (usage_percentage >= 100) {
+        progressClass = 'limit-progress-full';
+    } else if (usage_percentage >= 95) {
+        progressClass = 'limit-progress-critical';
+    } else if (usage_percentage >= 80) {
+        progressClass = 'limit-progress-warning';
+    }
+
+    // Build progress bar HTML
+    progressContainer.innerHTML = `
+        <div class="limit-progress-header">
+            <span class="limit-progress-label">
+                <strong>${current_count}</strong> de <strong>${max_cards}</strong> cartas
+            </span>
+            <span class="limit-progress-percentage ${usage_percentage >= 80 ? 'text-warning' : ''}">
+                ${usage_percentage}%
+            </span>
+        </div>
+        <div class="limit-progress-bar-container">
+            <div class="limit-progress-bar ${progressClass}" style="width: ${Math.min(usage_percentage, 100)}%">
+                <div class="limit-progress-bar-fill"></div>
+            </div>
+        </div>
+        <div class="limit-progress-footer">
+            <span class="limit-progress-remaining ${remaining <= 20 ? 'text-warning' : ''}">
+                ${remaining > 0 ? `Quedan ${remaining} cartas disponibles` : '⚠️ Límite alcanzado'}
+            </span>
+        </div>
+    `;
+
+    // Show warning notification if near limit
+    if (isNearLimit()) {
+        showLimitWarning(limitInfo);
+    }
+
+    logger.debug('Limit progress bar updated:', limitInfo);
 }
 
 /**

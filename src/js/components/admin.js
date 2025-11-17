@@ -141,6 +141,36 @@ export async function revokeAdmin(userId) {
 }
 
 /**
+ * Update a user's card limit
+ */
+export async function updateUserLimit(userId, maxCards, reason = null) {
+    try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(`/api/admin/users/${userId}/limit`, {
+            method: 'PUT',
+            headers: {
+                ...headers,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                max_cards: maxCards,
+                reason: reason
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to update user limit');
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error updating user limit:', error);
+        throw error;
+    }
+}
+
+/**
  * Show admin panel by switching to admin tab
  */
 export async function showAdminPanel() {
@@ -193,6 +223,9 @@ async function loadStatsSubtab() {
     try {
         const stats = await getSystemStats();
 
+        // Check if we have storage savings data
+        const hasStorageData = stats.storage && stats.storage.savings_percentage;
+
         statsSubtab.innerHTML = `
             <div class="stats-grid">
                 <div class="stat-card">
@@ -220,6 +253,33 @@ async function loadStatsSubtab() {
                     <div class="stat-label">Promedio Cartas/Usuario</div>
                 </div>
             </div>
+
+            ${hasStorageData ? `
+                <div class="storage-savings-section">
+                    <h3 style="color: #27ae60; margin: 30px 0 20px;">💾 Ahorro de Espacio (Esquema Normalizado)</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card success">
+                            <div class="stat-value">${stats.storage.savings_percentage}%</div>
+                            <div class="stat-label">Ahorro de Espacio</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.storage.old_schema_mb} MB</div>
+                            <div class="stat-label">Esquema Antiguo (duplicado)</div>
+                        </div>
+
+                        <div class="stat-card success">
+                            <div class="stat-value">${stats.storage.new_schema_mb} MB</div>
+                            <div class="stat-label">Esquema Actual (normalizado)</div>
+                        </div>
+
+                        <div class="stat-card success">
+                            <div class="stat-value">${stats.storage.savings_mb} MB</div>
+                            <div class="stat-label">Espacio Ahorrado</div>
+                        </div>
+                    </div>
+                </div>
+            ` : ''}
         `;
     } catch (error) {
         statsSubtab.innerHTML = `
@@ -247,9 +307,10 @@ async function loadUsersSubtab() {
                         <tr>
                             <th>Email</th>
                             <th>Cartas</th>
+                            <th>Límite</th>
+                            <th>Uso</th>
                             <th>Admin</th>
                             <th>Registrado</th>
-                            <th>Último Acceso</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
@@ -263,6 +324,16 @@ async function loadUsersSubtab() {
                 ? new Date(user.last_sign_in_at).toLocaleDateString('es-ES')
                 : 'Nunca';
 
+            // Determine usage color
+            let usageClass = '';
+            if (user.usage_percentage >= 100) {
+                usageClass = 'text-danger';
+            } else if (user.usage_percentage >= 80) {
+                usageClass = 'text-warning';
+            }
+
+            const hasCustomLimit = user.has_custom_limit ? '⭐' : '';
+
             usersHTML += `
                 <tr>
                     <td>
@@ -271,16 +342,26 @@ async function loadUsersSubtab() {
                     </td>
                     <td>${user.card_count}</td>
                     <td>
+                        ${user.max_cards} ${hasCustomLimit}
+                        ${user.custom_limit_reason ? `<br><small style="color: #95a5a6;">${user.custom_limit_reason}</small>` : ''}
+                    </td>
+                    <td class="${usageClass}">
+                        <strong>${user.usage_percentage}%</strong>
+                        ${user.usage_percentage >= 100 ? '🚫' : user.usage_percentage >= 80 ? '⚠️' : ''}
+                    </td>
+                    <td>
                         ${user.is_admin
                             ? '<span class="badge admin-badge">Admin</span>'
                             : '<span class="badge">Usuario</span>'
                         }
                     </td>
                     <td>${formattedDate}</td>
-                    <td>${lastSignIn}</td>
                     <td>
                         <button class="btn-small" onclick="viewUserCollection('${user.id}')">
                             Ver Colección
+                        </button>
+                        <button class="btn-small" onclick="editUserLimit('${user.id}', '${user.email}', ${user.max_cards}, '${user.custom_limit_reason || ''}')">
+                            Editar Límite
                         </button>
                         ${!isCurrentUser && !user.is_admin
                             ? `<button class="btn-small btn-admin" onclick="makeUserAdmin('${user.id}', '${user.email}')">
@@ -361,6 +442,38 @@ window.removeUserAdmin = async function(userId, email) {
         loadUsersSubtab(); // Refresh the table
     } catch (error) {
         alert('Error al revocar privilegios de admin: ' + error.message);
+    }
+};
+
+/**
+ * Edit a user's card limit
+ */
+window.editUserLimit = async function(userId, email, currentLimit, currentReason) {
+    const newLimit = prompt(
+        `Editar límite de cartas para ${email}\n\nLímite actual: ${currentLimit} cartas\n\nIngresa el nuevo límite (1-50000):`,
+        currentLimit
+    );
+
+    if (newLimit === null) return; // User canceled
+
+    const limitNumber = parseInt(newLimit);
+
+    if (isNaN(limitNumber) || limitNumber < 1 || limitNumber > 50000) {
+        alert('Límite inválido. Debe ser un número entre 1 y 50,000.');
+        return;
+    }
+
+    const reason = prompt(
+        `Razón para el límite personalizado (opcional):\n\nEjemplos: "Usuario premium", "Beta tester", "Coleccionista activo"`,
+        currentReason || ''
+    );
+
+    try {
+        await updateUserLimit(userId, limitNumber, reason || null);
+        alert(`Límite actualizado para ${email}:\n- Nuevo límite: ${limitNumber} cartas\n${reason ? `- Razón: ${reason}` : ''}`);
+        loadUsersSubtab(); // Refresh the table
+    } catch (error) {
+        alert('Error al actualizar límite: ' + error.message);
     }
 };
 

@@ -49,6 +49,7 @@ import { filterByType, toggleViewMode } from './components/results.js';
 import { showOnboarding, closeOnboarding, showDemoModeMessage } from './components/onboarding.js';
 import { addCards } from './components/addCards.js';
 import { initAdmin } from './components/admin.js';
+import { initNotifications } from './components/notifications.js';
 
 // Synergy engine
 import {
@@ -152,6 +153,9 @@ function setupGlobalFunctions() {
 function initEventListeners() {
     window.addEventListener('DOMContentLoaded', () => {
         logger.info('DOM loaded, setting up event listeners...');
+
+        // Initialize notifications system
+        initNotifications();
 
         // Tab navigation
         document.querySelectorAll('.tab-btn').forEach(btn => {
