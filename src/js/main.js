@@ -32,7 +32,8 @@ import {
     displayCollection,
     filterCollection,
     updateCollectionCount,
-    removeFromCollectionUI
+    removeFromCollectionUI,
+    setCollectionViewMode
 } from './components/collection.js';
 import {
     initAutocomplete,
@@ -122,6 +123,7 @@ function setupGlobalFunctions() {
     // Collection functions
     window.filterCollection = filterCollection;
     window.removeFromCollectionUI = removeFromCollectionUI;
+    window.setCollectionViewMode = setCollectionViewMode;
 
     // Synergy engine
     window.analyzesynergy = analyzesynergy;
@@ -198,6 +200,12 @@ function initEventListeners() {
         if (registerBtn) {
             registerBtn.addEventListener('click', register);
         }
+
+        // Collection view toggle
+        const collectionListViewBtn = document.getElementById('collectionListViewBtn');
+        const collectionGridViewBtn = document.getElementById('collectionGridViewBtn');
+        if (collectionListViewBtn) collectionListViewBtn.addEventListener('click', () => setCollectionViewMode('list'));
+        if (collectionGridViewBtn) collectionGridViewBtn.addEventListener('click', () => setCollectionViewMode('grid'));
 
         // Logout button
         const logoutBtn = document.getElementById('logoutBtn');
