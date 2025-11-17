@@ -24,7 +24,7 @@ let userLimitInfo = {
  *
  * @async
  * @param {Object} options - Loading options
- * @param {number} [options.limit=10000] - Max number of cards to load
+ * @param {number} [options.limit=200] - Max number of cards to load (server max: 200)
  * @param {number} [options.offset=0] - Offset for pagination
  * @returns {Promise<Object[]>} Array of card objects in the collection
  * @throws {Error} If the collection cannot be loaded
@@ -34,7 +34,7 @@ let userLimitInfo = {
  * console.log(`Loaded ${collection.length} cards`);
  */
 export async function loadCollection(options = {}) {
-    const { limit = 10000, offset = 0 } = options;
+    const { limit = 200, offset = 0 } = options;
     logger.info('Loading collection...', { limit, offset });
 
     try {
