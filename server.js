@@ -521,11 +521,19 @@ async function checkUserCanAddCards(supabaseClient, userId, numCards) {
 
 // Check if current user is admin
 async function isUserAdmin(supabaseClient) {
-    if (!USE_SUPABASE || !supabaseClient) return false;
+    if (!USE_SUPABASE || !supabaseClient) {
+        console.log('[isUserAdmin] Supabase not configured or no client provided');
+        return false;
+    }
 
     try {
         const { data: { user } } = await supabaseClient.auth.getUser();
-        if (!user) return false;
+        console.log('[isUserAdmin] Retrieved user:', user ? { id: user.id, email: user.email } : null);
+
+        if (!user) {
+            console.log('[isUserAdmin] No authenticated user found');
+            return false;
+        }
 
         const { data, error } = await supabaseClient
             .from('admins')
@@ -534,13 +542,15 @@ async function isUserAdmin(supabaseClient) {
             .maybeSingle();
 
         if (error) {
-            console.error('Error checking admin status:', error);
+            console.error('[isUserAdmin] Error checking admin status:', error);
             return false;
         }
 
-        return !!data;
+        const isAdmin = !!data;
+        console.log('[isUserAdmin] Admin check result:', { userId: user.id, isAdmin, data });
+        return isAdmin;
     } catch (error) {
-        console.error('Error in isUserAdmin:', error);
+        console.error('[isUserAdmin] Exception in isUserAdmin:', error);
         return false;
     }
 }
@@ -983,23 +993,35 @@ app.delete('/api/collection', requireAuth, async (req, res) => {
 // ====================
 
 // Check if current user is admin
-app.get('/api/admin/check', async (req, res) => {
+app.get('/api/admin/check', requireAuth, async (req, res) => {
     try {
+        console.log('[/api/admin/check] Request received');
+        console.log('[/api/admin/check] Headers present:', {
+            hasAuthorization: !!req.headers.authorization,
+            authHeader: req.headers.authorization ? 'Bearer ***' : 'none'
+        });
+
         const client = getSupabaseClient(req);
         if (!client) {
+            console.log('[/api/admin/check] No Supabase client - returning isAdmin: false');
             return res.json({ isAdmin: false });
         }
 
+        console.log('[/api/admin/check] Supabase client created, checking admin status...');
         const isAdmin = await isUserAdmin(client);
         const { data: { user } } = await client.auth.getUser();
 
-        res.json({
+        const response = {
             isAdmin,
             userId: user?.id,
             email: user?.email
-        });
+        };
+        console.log('[/api/admin/check] Sending response:', response);
+
+        res.json(response);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('[/api/admin/check] Error:', error);
+        res.status(500).json({ error: error.message, isAdmin: false });
     }
 });
 
