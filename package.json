@@ -9,7 +9,8 @@
     "test": "vitest run",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
-    "admin:make-first": "node scripts/make-first-admin.js"
+    "admin:make-first": "node scripts/make-first-admin.js",
+    "restore:collection": "node scripts/restore-collection.js"
   },
   "keywords": ["mtg", "magic", "commander", "synergy", "edh", "deck-building"],
   "author": "",
