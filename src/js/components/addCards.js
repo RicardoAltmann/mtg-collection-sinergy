@@ -6,7 +6,7 @@
 
 import { logger } from '../utils/logger.js';
 import { addToCollection, loadCollection } from '../api/collection.js';
-import { updateCollectionCount } from './collection.js';
+import { updateCollectionCount, filterCollection } from './collection.js';
 
 /**
  * Add cards from the manual textarea to the collection
@@ -100,8 +100,9 @@ export async function addCards() {
         // Reload collection to refresh UI
         await loadCollection();
 
-        // Update collection count
+        // Update collection count and display
         updateCollectionCount();
+        filterCollection();
 
     } catch (error) {
         logger.error('Error adding cards:', error);

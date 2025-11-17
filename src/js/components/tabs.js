@@ -32,9 +32,15 @@ export function switchTab(tabName, event) {
 
     // Load collection when switching to collection tab
     if (tabName === 'collection') {
-        loadCollection().catch(error => {
-            logger.error('Failed to load collection on tab switch:', error);
-        });
+        loadCollection()
+            .then(async () => {
+                const { updateCollectionCount, filterCollection } = await import('./collection.js');
+                updateCollectionCount();
+                filterCollection();
+            })
+            .catch(error => {
+                logger.error('Failed to load collection on tab switch:', error);
+            });
     }
 }
 

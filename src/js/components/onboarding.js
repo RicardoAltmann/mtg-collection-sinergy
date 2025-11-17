@@ -93,10 +93,11 @@ export async function showDemoModeMessage(customMessage = null) {
     // Load collection and update UI
     try {
         const { loadCollection } = await import('../api/collection.js');
-        const { updateCollectionCount } = await import('./collection.js');
+        const { updateCollectionCount, filterCollection } = await import('./collection.js');
 
         await loadCollection();
         updateCollectionCount();
+        filterCollection();
     } catch (error) {
         logger.error('Error loading collection in demo mode:', error);
     }

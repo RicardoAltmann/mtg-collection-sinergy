@@ -77,8 +77,17 @@ export function displayCollection(cards) {
  * Filter the collection based on search term and sort order
  */
 export function filterCollection() {
-    const searchTerm = document.getElementById('searchCollection').value.toLowerCase();
-    const sortBy = document.getElementById('sortCollection')?.value || 'name';
+    const searchInput = document.getElementById('searchCollection');
+    const sortSelect = document.getElementById('sortCollection');
+
+    // If elements don't exist, skip filtering (not on collection tab)
+    if (!searchInput || !sortSelect) {
+        logger.debug('Filter elements not found, skipping filter');
+        return;
+    }
+
+    const searchTerm = searchInput.value.toLowerCase();
+    const sortBy = sortSelect.value || 'name';
 
     logger.debug('Filtering collection:', { searchTerm, sortBy });
 
