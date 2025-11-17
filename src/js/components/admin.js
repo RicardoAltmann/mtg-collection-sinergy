@@ -141,7 +141,7 @@ export async function revokeAdmin(userId) {
 }
 
 /**
- * Create and show admin panel UI
+ * Show admin panel by switching to admin tab
  */
 export async function showAdminPanel() {
     const adminCheck = await checkAdminStatus();
@@ -150,87 +150,50 @@ export async function showAdminPanel() {
         return;
     }
 
-    // Create admin panel container
-    const adminPanel = document.createElement('div');
-    adminPanel.id = 'admin-panel';
-    adminPanel.className = 'admin-panel';
-
-    adminPanel.innerHTML = `
-        <div class="admin-header">
-            <h2>🛡️ Panel de Administración</h2>
-            <button id="close-admin-panel" class="btn-close">✕</button>
-        </div>
-
-        <div class="admin-tabs">
-            <button class="admin-tab active" data-tab="stats">Estadísticas</button>
-            <button class="admin-tab" data-tab="users">Usuarios</button>
-        </div>
-
-        <div class="admin-content">
-            <div id="admin-stats-tab" class="admin-tab-content active">
-                <div class="loading">Cargando estadísticas...</div>
-            </div>
-
-            <div id="admin-users-tab" class="admin-tab-content">
-                <div class="loading">Cargando usuarios...</div>
-            </div>
-        </div>
-    `;
-
-    document.body.appendChild(adminPanel);
-
-    // Add event listeners
-    document.getElementById('close-admin-panel').addEventListener('click', () => {
-        adminPanel.remove();
-    });
-
-    // Tab switching
-    document.querySelectorAll('.admin-tab').forEach(tab => {
-        tab.addEventListener('click', (e) => {
-            const tabName = e.target.dataset.tab;
-            switchAdminTab(tabName);
-        });
-    });
+    // Switch to admin tab
+    const { switchTab } = await import('./tabs.js');
+    switchTab('admin');
 
     // Load initial data
-    loadStatsTab();
+    loadStatsSubtab();
 }
 
 /**
- * Switch between admin tabs
+ * Switch between admin subtabs
  */
-function switchAdminTab(tabName) {
-    // Update tab buttons
-    document.querySelectorAll('.admin-tab').forEach(tab => {
-        tab.classList.toggle('active', tab.dataset.tab === tabName);
+function switchAdminSubtab(subtabName) {
+    // Update subtab buttons
+    document.querySelectorAll('.admin-subtab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.subtab === subtabName);
     });
 
-    // Update tab content
-    document.querySelectorAll('.admin-tab-content').forEach(content => {
+    // Update subtab content
+    document.querySelectorAll('.admin-subtab-content').forEach(content => {
         content.classList.remove('active');
     });
 
-    const targetContent = document.getElementById(`admin-${tabName}-tab`);
+    const targetContent = document.getElementById(`admin${subtabName.charAt(0).toUpperCase() + subtabName.slice(1)}Subtab`);
     targetContent.classList.add('active');
 
-    // Load data for the tab
-    if (tabName === 'stats') {
-        loadStatsTab();
-    } else if (tabName === 'users') {
-        loadUsersTab();
+    // Load data for the subtab
+    if (subtabName === 'stats') {
+        loadStatsSubtab();
+    } else if (subtabName === 'users') {
+        loadUsersSubtab();
     }
 }
 
 /**
- * Load statistics tab
+ * Load statistics subtab
  */
-async function loadStatsTab() {
-    const statsTab = document.getElementById('admin-stats-tab');
+async function loadStatsSubtab() {
+    const statsSubtab = document.getElementById('adminStatsSubtab');
+    if (!statsSubtab) return;
 
     try {
         const stats = await getSystemStats();
 
-        statsTab.innerHTML = `
+        statsSubtab.innerHTML = `
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-value">${stats.totalUsers}</div>
@@ -259,7 +222,7 @@ async function loadStatsTab() {
             </div>
         `;
     } catch (error) {
-        statsTab.innerHTML = `
+        statsSubtab.innerHTML = `
             <div class="error-message">
                 Error al cargar estadísticas: ${error.message}
             </div>
@@ -268,10 +231,11 @@ async function loadStatsTab() {
 }
 
 /**
- * Load users tab
+ * Load users subtab
  */
-async function loadUsersTab() {
-    const usersTab = document.getElementById('admin-users-tab');
+async function loadUsersSubtab() {
+    const usersSubtab = document.getElementById('adminUsersSubtab');
+    if (!usersSubtab) return;
 
     try {
         const users = await getAllUsers();
@@ -341,9 +305,9 @@ async function loadUsersTab() {
             </div>
         `;
 
-        usersTab.innerHTML = usersHTML;
+        usersSubtab.innerHTML = usersHTML;
     } catch (error) {
-        usersTab.innerHTML = `
+        usersSubtab.innerHTML = `
             <div class="error-message">
                 Error al cargar usuarios: ${error.message}
             </div>
@@ -377,7 +341,7 @@ window.makeUserAdmin = async function(userId, email) {
     try {
         await grantAdmin(userId);
         alert(`${email} ahora es administrador`);
-        loadUsersTab(); // Refresh the table
+        loadUsersSubtab(); // Refresh the table
     } catch (error) {
         alert('Error al otorgar privilegios de admin: ' + error.message);
     }
@@ -394,7 +358,7 @@ window.removeUserAdmin = async function(userId, email) {
     try {
         await revokeAdmin(userId);
         alert(`Privilegios de admin revocados para ${email}`);
-        loadUsersTab(); // Refresh the table
+        loadUsersSubtab(); // Refresh the table
     } catch (error) {
         alert('Error al revocar privilegios de admin: ' + error.message);
     }
@@ -402,12 +366,18 @@ window.removeUserAdmin = async function(userId, email) {
 
 /**
  * Initialize admin features
- * Shows admin button in dropdown menu if user is admin
+ * Shows admin tab and dropdown menu item if user is admin
  */
 export async function initAdmin() {
     const adminCheck = await checkAdminStatus();
 
     if (adminCheck) {
+        // Show admin tab button
+        const adminTabBtn = document.getElementById('adminTabBtn');
+        if (adminTabBtn) {
+            adminTabBtn.classList.remove('hidden');
+        }
+
         // Show admin button in dropdown menu
         const adminPanelBtn = document.getElementById('adminPanelBtn');
         if (adminPanelBtn) {
@@ -416,8 +386,17 @@ export async function initAdmin() {
                 showAdminPanel();
                 // Close dropdown after clicking
                 document.getElementById('userDropdown').classList.add('hidden');
+                userMenuToggle.classList.remove('open');
             });
         }
+
+        // Setup admin subtabs
+        document.querySelectorAll('.admin-subtab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const subtabName = e.target.getAttribute('data-subtab');
+                switchAdminSubtab(subtabName);
+            });
+        });
     }
 
     // Setup user menu toggle
