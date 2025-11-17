@@ -293,6 +293,86 @@ async function removeCardFromCollection(supabaseClient, userId, cardName) {
     }
 }
 
+// ====================
+// ADMIN FUNCTIONS
+// ====================
+
+// Check if current user is admin
+async function isUserAdmin(supabaseClient) {
+    if (!USE_SUPABASE || !supabaseClient) return false;
+
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return false;
+
+        const { data, error } = await supabaseClient
+            .from('admins')
+            .select('user_id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+        if (error) {
+            console.error('Error checking admin status:', error);
+            return false;
+        }
+
+        return !!data;
+    } catch (error) {
+        console.error('Error in isUserAdmin:', error);
+        return false;
+    }
+}
+
+// Middleware to require admin privileges
+async function requireAdmin(req, res, next) {
+    if (!USE_SUPABASE) {
+        return res.status(403).json({ error: 'Admin features require Supabase authentication' });
+    }
+
+    const client = getSupabaseClient(req);
+    if (!client) {
+        return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const isAdmin = await isUserAdmin(client);
+    if (!isAdmin) {
+        return res.status(403).json({ error: 'Admin privileges required' });
+    }
+
+    req.supabaseClient = client;
+    next();
+}
+
+// Get all users with their card counts (admin only)
+async function getAllUsersStats(supabaseClient) {
+    const { data: users, error: usersError } = await supabaseClient.auth.admin.listUsers();
+    if (usersError) throw usersError;
+
+    const { data: cardCounts, error: cardsError } = await supabaseClient
+        .from('cards')
+        .select('user_id');
+    if (cardsError) throw cardsError;
+
+    // Count cards per user
+    const countMap = {};
+    cardCounts.forEach(card => {
+        countMap[card.user_id] = (countMap[card.user_id] || 0) + 1;
+    });
+
+    // Get admin list
+    const { data: admins } = await supabaseClient.from('admins').select('user_id');
+    const adminIds = new Set(admins?.map(a => a.user_id) || []);
+
+    return users.users.map(user => ({
+        id: user.id,
+        email: user.email,
+        created_at: user.created_at,
+        last_sign_in_at: user.last_sign_in_at,
+        card_count: countMap[user.id] || 0,
+        is_admin: adminIds.has(user.id)
+    }));
+}
+
 // API Routes
 
 // Get configuration (Supabase credentials)
@@ -543,6 +623,160 @@ app.delete('/api/collection', requireAuth, async (req, res) => {
     } catch (error) {
         console.error('Error clearing collection:', error);
         res.status(500).json({ error: 'Failed to clear collection' });
+    }
+});
+
+// ====================
+// ADMIN ROUTES
+// ====================
+
+// Check if current user is admin
+app.get('/api/admin/check', async (req, res) => {
+    try {
+        const client = getSupabaseClient(req);
+        if (!client) {
+            return res.json({ isAdmin: false });
+        }
+
+        const isAdmin = await isUserAdmin(client);
+        const { data: { user } } = await client.auth.getUser();
+
+        res.json({
+            isAdmin,
+            userId: user?.id,
+            email: user?.email
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get all users and statistics (admin only)
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
+    try {
+        const stats = await getAllUsersStats(req.supabaseClient);
+        res.json(stats);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get system statistics (admin only)
+app.get('/api/admin/stats', requireAdmin, async (req, res) => {
+    try {
+        const client = req.supabaseClient;
+
+        // Get total users
+        const { data: users } = await client.auth.admin.listUsers();
+        const totalUsers = users?.users?.length || 0;
+
+        // Get total cards across all users
+        const { count: totalCards } = await client
+            .from('cards')
+            .select('*', { count: 'exact', head: true });
+
+        // Get total admins
+        const { data: admins } = await client.from('admins').select('user_id');
+        const totalAdmins = admins?.length || 0;
+
+        // Get unique card names
+        const { data: cardData } = await client
+            .from('cards')
+            .select('card_data');
+
+        const uniqueCardNames = new Set(
+            cardData?.map(c => c.card_data?.name?.toLowerCase()) || []
+        );
+
+        res.json({
+            totalUsers,
+            totalCards,
+            totalAdmins,
+            uniqueCards: uniqueCardNames.size,
+            averageCardsPerUser: totalUsers > 0 ? (totalCards / totalUsers).toFixed(2) : 0
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Grant admin privileges (admin only)
+app.post('/api/admin/grant', requireAdmin, async (req, res) => {
+    try {
+        const { userId } = req.body;
+        if (!userId) {
+            return res.status(400).json({ error: 'userId is required' });
+        }
+
+        const client = req.supabaseClient;
+        const { data: { user } } = await client.auth.getUser();
+
+        const { error } = await client
+            .from('admins')
+            .insert([{
+                user_id: userId,
+                granted_by: user.id
+            }]);
+
+        if (error) {
+            if (error.code === '23505') { // Unique violation
+                return res.status(400).json({ error: 'User is already an admin' });
+            }
+            throw error;
+        }
+
+        res.json({ message: 'Admin privileges granted successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Revoke admin privileges (admin only)
+app.delete('/api/admin/revoke/:userId', requireAdmin, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const client = req.supabaseClient;
+        const { data: { user } } = await client.auth.getUser();
+
+        // Prevent self-revocation
+        if (userId === user.id) {
+            return res.status(400).json({ error: 'Cannot revoke your own admin privileges' });
+        }
+
+        const { error } = await client
+            .from('admins')
+            .delete()
+            .eq('user_id', userId);
+
+        if (error) throw error;
+
+        res.json({ message: 'Admin privileges revoked successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get user's collection by user ID (admin only)
+app.get('/api/admin/user/:userId/collection', requireAdmin, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const client = req.supabaseClient;
+
+        const { data, error } = await client
+            .from('cards')
+            .select('card_data, created_at')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+
+        res.json({
+            userId,
+            cards: data ? data.map(row => row.card_data) : [],
+            totalCards: data?.length || 0
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 });
 

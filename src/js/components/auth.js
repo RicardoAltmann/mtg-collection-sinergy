@@ -46,6 +46,10 @@ export async function showMainApp() {
             window.showOnboarding();
         }
     }
+
+    // Initialize admin panel if user is admin
+    const { initAdmin } = await import('./admin.js');
+    await initAdmin();
 }
 
 /**

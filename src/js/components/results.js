@@ -9,8 +9,7 @@ import { logger } from '../utils/logger.js';
 // Store all synergies for filtering
 let allSynergies = [];
 let activeTypeFilter = 'all';
-// Persisted view mode for results rendering
-let viewMode = localStorage.getItem('synergyViewMode') || 'cards';
+let viewMode = 'cards';
 let commanderData = null;
 
 /**
@@ -119,10 +118,10 @@ export function displayResults(synergies, errors) {
                 <label style="margin: 0;">Filtrar por tipo de carta:</label>
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <div class="view-toggle" role="group" aria-label="Cambiar vista de resultados">
-                        <button type="button" class="view-btn ${viewMode === 'cards' ? 'active' : ''}" data-view="cards" onclick="window.toggleViewModeUI('cards', event)">
+                        <button class="view-btn ${viewMode === 'cards' ? 'active' : ''}" onclick="window.toggleViewModeUI('cards', event)">
                             🔳 Tarjetas
                         </button>
-                        <button type="button" class="view-btn ${viewMode === 'list' ? 'active' : ''}" data-view="list" onclick="window.toggleViewModeUI('list', event)">
+                        <button class="view-btn ${viewMode === 'list' ? 'active' : ''}" onclick="window.toggleViewModeUI('list', event)">
                             📃 Lista
                         </button>
                     </div>
@@ -317,61 +316,6 @@ export function createCardHTML(item) {
     `;
 }
 
-function createListItemHTML(item) {
-    const reasonsList = item.reasons.length > 0
-        ? '<ul class="synergy-reasons compact">' + item.reasons.map(r => `<li>${r}</li>`).join('') + '</ul>'
-        : '<p style="color: #7f8c8d;">Sin sinergia específica detectada</p>';
-
-    const typeLine = item.card.type_line.toLowerCase();
-    let mainType = '';
-    if (typeLine.includes('creature')) mainType = 'Criatura';
-    else if (typeLine.includes('instant')) mainType = 'Instantáneo';
-    else if (typeLine.includes('sorcery')) mainType = 'Conjuro';
-    else if (typeLine.includes('artifact')) mainType = 'Artefacto';
-    else if (typeLine.includes('enchantment')) mainType = 'Encantamiento';
-    else if (typeLine.includes('planeswalker')) mainType = 'Planeswalker';
-    else if (typeLine.includes('land')) mainType = 'Tierra';
-
-    const synergyTier = item.score >= 20
-        ? 'high'
-        : item.score >= 5
-            ? 'medium'
-            : item.score >= 0
-                ? 'low'
-                : 'offcolor';
-
-    const tierLabels = {
-        high: 'Alta sinergia',
-        medium: 'Media sinergia',
-        low: 'Sinergia baja',
-        offcolor: 'Fuera de color'
-    };
-
-    return `
-        <div class="card-item list-item">
-            <div class="list-item-main">
-                <div class="card-name-row">
-                    <div class="card-name">${item.card.name}</div>
-                    ${mainType ? `<span class="card-badge">${mainType}</span>` : ''}
-                </div>
-                <div class="card-subtitle">${item.card.type_line}</div>
-                <div class="card-meta">
-                    ${item.role ? `<span class="meta-chip">Rol: ${item.role}</span>` : ''}
-                    ${item.archetype ? `<span class="meta-chip subtle">Arquetipo ${item.archetype}</span>` : ''}
-                    <span class="meta-chip subtle">Puntaje ${item.score}</span>
-                </div>
-                <div class="card-body">${reasonsList}</div>
-            </div>
-            <div class="list-item-score">
-                <div class="score-chip ${synergyTier}">
-                    <span class="score-value">${item.score}</span>
-                    <span class="score-label">${tierLabels[synergyTier]}</span>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
 /**
  * Get card types and their counts from synergies
  *
@@ -474,7 +418,6 @@ export function filterByType(type, event) {
 export function toggleViewMode(view, event) {
     if (viewMode === view) return;
     viewMode = view;
-    localStorage.setItem('synergyViewMode', viewMode);
 
     const filtered = getFilteredSynergies();
 
@@ -483,10 +426,10 @@ export function toggleViewMode(view, event) {
         filteredDiv.innerHTML = renderFilteredResults(filtered);
     }
 
-    // Ensure buttons reflect the current state even if event bubbling hits inner elements
-    document.querySelectorAll('.view-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.view === viewMode);
-    });
+    document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+    if (event && event.target) {
+        event.target.classList.add('active');
+    }
 }
 
 /**

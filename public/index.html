@@ -20,11 +20,20 @@
 
         <!-- User Info (shown when logged in) -->
         <div id="userInfo" class="user-info hidden">
-            <div>
+            <button id="userMenuToggle" class="user-menu-toggle" aria-label="Menú de usuario">
                 <span>👤 </span>
                 <span id="userEmail" class="user-email"></span>
+                <span class="dropdown-arrow">▼</span>
+            </button>
+            <!-- User Dropdown Menu -->
+            <div id="userDropdown" class="user-dropdown hidden">
+                <button id="adminPanelBtn" class="dropdown-item admin-item hidden">
+                    🛡️ Panel Admin
+                </button>
+                <button id="logoutBtn" class="dropdown-item logout-item">
+                    🚪 Cerrar Sesión
+                </button>
             </div>
-            <button id="logoutBtn" class="logout-btn">Cerrar Sesión</button>
         </div>
 
         <!-- Auth Forms (shown when not logged in) -->

@@ -8,7 +8,8 @@
     "start": "node server.js",
     "test": "vitest run",
     "test:watch": "vitest watch",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "admin:make-first": "node scripts/make-first-admin.js"
   },
   "keywords": ["mtg", "magic", "commander", "synergy", "edh", "deck-building"],
   "author": "",
@@ -16,6 +17,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.81.1",
     "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
     "express": "^5.1.0",
     "node-fetch": "^3.3.2"
   },
