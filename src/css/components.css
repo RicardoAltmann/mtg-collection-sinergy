@@ -206,61 +206,211 @@ button:disabled {
 
 .synergy-list {
     display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--space-md);
+}
+
+.synergy-list.list-view {
+    grid-template-columns: 1fr;
     gap: var(--space-sm);
 }
 
 .card-item {
-    background: var(--color-bg-secondary);
-    padding: var(--space-md);
-    border-radius: var(--radius-sm);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0));
+    padding: var(--space-lg);
+    border-radius: var(--radius-md);
     border: 1px solid var(--glass-border);
-    transition: border-color var(--transition-fast);
+    transition: all var(--transition-fast);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.card-item.list-item {
+    flex-direction: row;
+    align-items: stretch;
+    gap: var(--space-lg);
+    padding: var(--space-md) var(--space-lg);
 }
 
 .card-item:hover {
     border-color: var(--glass-border-accent);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.card-header {
+    display: flex;
+    gap: var(--space-md);
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.card-heading {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.card-name-row {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: center;
+    flex-wrap: wrap;
 }
 
 .card-name {
     font-size: var(--font-size-lg);
     font-weight: var(--font-weight-semibold);
     color: var(--text-primary);
-    margin-bottom: var(--space-xs);
 }
 
-.card-type {
+.card-subtitle {
     color: var(--text-muted);
     font-size: var(--font-size-sm);
-    margin-bottom: var(--space-md);
     font-weight: var(--font-weight-medium);
 }
 
-/* Synergy Score Badge */
-.synergy-score {
+.card-badge {
+    background: rgba(74, 158, 255, 0.12);
+    color: var(--text-accent);
+    border: 1px solid var(--glass-border-accent);
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.card-meta {
+    display: flex;
+    gap: var(--space-xs);
+    flex-wrap: wrap;
+    margin-top: var(--space-xs);
+}
+
+.meta-chip {
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-secondary);
+    border: 1px solid var(--glass-border);
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
     display: inline-flex;
     align-items: center;
-    gap: var(--space-xs);
-    padding: 4px var(--space-sm);
-    background: var(--color-accent);
-    border-radius: var(--radius-sm);
-    font-weight: var(--font-weight-medium);
-    margin-bottom: var(--space-sm);
-    font-size: var(--font-size-xs);
-    color: white;
+    gap: 6px;
 }
 
-.synergy-score::before {
-    content: '⭐';
+.meta-chip::before {
+    content: '⟡';
+    color: var(--text-muted);
+}
+
+.meta-chip.subtle {
+    opacity: 0.9;
+    border-style: dashed;
+}
+
+.score-chip {
+    background: linear-gradient(135deg, rgba(74, 158, 255, 0.15), rgba(74, 158, 255, 0.05));
+    border: 1px solid var(--glass-border-accent);
+    border-radius: var(--radius-md);
+    padding: var(--space-sm) var(--space-md);
+    min-width: 120px;
+    display: grid;
+    gap: 2px;
+    justify-items: end;
+    text-align: right;
+    box-shadow: var(--glow-accent);
+}
+
+.score-chip .score-value {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
+}
+
+.score-chip .score-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.score-chip.medium {
+    background: linear-gradient(135deg, rgba(243, 156, 18, 0.15), rgba(243, 156, 18, 0.05));
+    border-color: rgba(243, 156, 18, 0.4);
+}
+
+.score-chip.low {
+    background: linear-gradient(135deg, rgba(189, 195, 199, 0.15), rgba(189, 195, 199, 0.05));
+    border-color: rgba(189, 195, 199, 0.3);
+}
+
+.score-chip.offcolor {
+    background: linear-gradient(135deg, rgba(231, 76, 60, 0.12), rgba(231, 76, 60, 0.04));
+    border-color: rgba(231, 76, 60, 0.4);
+}
+
+.card-body {
+    margin-top: var(--space-xs);
+}
+
+.list-item-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.list-item-score {
+    min-width: 150px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-start;
+}
+
+.synergy-reasons.compact {
+    gap: 6px;
+}
+
+@media (max-width: 768px) {
+    .card-item.list-item {
+        flex-direction: column;
+    }
+
+    .list-item-score {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .synergy-list.list-view {
+        gap: var(--space-md);
+    }
 }
 
 .synergy-reasons {
-    margin-top: 12px;
-    padding-left: 20px;
+    list-style: none;
+    margin-top: var(--space-xs);
+    padding: 0;
+    display: grid;
+    gap: 10px;
 }
 
 .synergy-reasons li {
-    margin: 6px 0;
-    color: #bdc3c7;
+    position: relative;
+    padding-left: 18px;
+    color: #d5d8dc;
+    line-height: 1.5;
+}
+
+.synergy-reasons li::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: var(--text-accent);
 }
 
 .stats {
@@ -470,6 +620,37 @@ button:disabled {
 
 .filter-btn.active::after {
     content: ' ✓';
+}
+
+.view-toggle {
+    display: inline-flex;
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-full);
+    padding: 4px;
+    gap: 4px;
+}
+
+.view-btn {
+    background: transparent;
+    color: var(--text-secondary);
+    border: none;
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.view-btn:hover {
+    color: var(--text-primary);
+}
+
+.view-btn.active {
+    background: var(--color-primary);
+    color: #fff;
+    box-shadow: var(--glow-primary);
 }
 
 .sort-select {

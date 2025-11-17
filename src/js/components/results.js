@@ -9,6 +9,8 @@ import { logger } from '../utils/logger.js';
 // Store all synergies for filtering
 let allSynergies = [];
 let activeTypeFilter = 'all';
+// Persisted view mode for results rendering
+let viewMode = localStorage.getItem('synergyViewMode') || 'cards';
 let commanderData = null;
 
 /**
@@ -28,6 +30,7 @@ export function setCommanderData(data) {
  */
 export function displayResults(synergies, errors) {
     allSynergies = synergies;
+    activeTypeFilter = 'all';
     const resultsDiv = document.getElementById('results');
 
     logger.info('Displaying results:', synergies.length, 'cards');
@@ -114,14 +117,24 @@ export function displayResults(synergies, errors) {
         <div class="filters">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <label style="margin: 0;">Filtrar por tipo de carta:</label>
-                <div id="filterCounter" style="background: rgba(243, 156, 18, 0.2); padding: 8px 16px; border-radius: 6px; border: 2px solid #f39c12;">
-                    <strong style="color: #f39c12;">${synergies.length}</strong>
-                    <span style="color: #95a5a6;"> carta${synergies.length !== 1 ? 's' : ''} mostrada${synergies.length !== 1 ? 's' : ''}</span>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="view-toggle" role="group" aria-label="Cambiar vista de resultados">
+                        <button type="button" class="view-btn ${viewMode === 'cards' ? 'active' : ''}" data-view="cards" onclick="window.toggleViewModeUI('cards', event)">
+                            🔳 Tarjetas
+                        </button>
+                        <button type="button" class="view-btn ${viewMode === 'list' ? 'active' : ''}" data-view="list" onclick="window.toggleViewModeUI('list', event)">
+                            📃 Lista
+                        </button>
+                    </div>
+                    <div id="filterCounter" style="background: rgba(243, 156, 18, 0.2); padding: 8px 16px; border-radius: 6px; border: 2px solid #f39c12;">
+                        <strong style="color: #f39c12;">${synergies.length}</strong>
+                        <span style="color: #95a5a6;"> carta${synergies.length !== 1 ? 's' : ''} mostrada${synergies.length !== 1 ? 's' : ''}</span>
+                    </div>
                 </div>
             </div>
             <div class="filter-group">
                 <div class="filter-buttons">
-                    <button class="filter-btn ${activeTypeFilter === 'all' ? 'active' : ''}" onclick="window.filterByTypeUI('all', event)">
+                    <button type="button" class="filter-btn ${activeTypeFilter === 'all' ? 'active' : ''}" onclick="window.filterByTypeUI('all', event)">
                         🔮 Todas (${synergies.length})
                     </button>
                     ${cardTypes.map(type => {
@@ -135,7 +148,7 @@ export function displayResults(synergies, errors) {
                             'land': '🏔️'
                         };
                         return `
-                        <button class="filter-btn ${activeTypeFilter === type.key ? 'active' : ''}" onclick="window.filterByTypeUI('${type.key}', event)">
+                        <button type="button" class="filter-btn ${activeTypeFilter === type.key ? 'active' : ''}" onclick="window.filterByTypeUI('${type.key}', event)">
                             ${icons[type.key] || '📜'} ${type.name} (${type.count})
                         </button>
                     `}).join('')}
@@ -145,7 +158,7 @@ export function displayResults(synergies, errors) {
     `;
 
     html += '<div id="filteredResults">';
-    html += renderFilteredResults(synergies);
+    html += renderFilteredResults(getFilteredSynergies());
     html += '</div>';
 
     resultsDiv.innerHTML = html;
@@ -167,18 +180,18 @@ export function renderFilteredResults(synergies) {
 
     if (highSynergy.length > 0) {
         html += '<h2 style="color: #27ae60; margin: 20px 0;">🔥 Alta Sinergia</h2>';
-        html += '<div class="synergy-list">';
+        html += `<div class="synergy-list ${viewMode === 'list' ? 'list-view' : ''}">`;
         highSynergy.forEach(item => {
-            html += createCardHTML(item);
+            html += renderCardByMode(item);
         });
         html += '</div>';
     }
 
     if (mediumSynergy.length > 0) {
         html += '<h2 style="color: #f39c12; margin: 20px 0;">⚡ Media Sinergia</h2>';
-        html += '<div class="synergy-list">';
+        html += `<div class="synergy-list ${viewMode === 'list' ? 'list-view' : ''}">`;
         mediumSynergy.forEach(item => {
-            html += createCardHTML(item);
+            html += renderCardByMode(item);
         });
         html += '</div>';
     }
@@ -192,10 +205,10 @@ export function renderFilteredResults(synergies) {
                     <span class="collapsible-toggle" id="lowSynergy-toggle">▼</span>
                 </div>
                 <div class="collapsible-content" id="lowSynergy-content">
-                    <div class="synergy-list" style="margin-top: 15px;">
+                    <div class="synergy-list ${viewMode === 'list' ? 'list-view' : ''}" style="margin-top: 15px;">
         `;
         lowSynergy.forEach(item => {
-            html += createCardHTML(item);
+            html += renderCardByMode(item);
         });
         html += `
                     </div>
@@ -213,10 +226,10 @@ export function renderFilteredResults(synergies) {
                     <span class="collapsible-toggle" id="outOfColor-toggle">▼</span>
                 </div>
                 <div class="collapsible-content" id="outOfColor-content">
-                    <div class="synergy-list" style="margin-top: 15px;">
+                    <div class="synergy-list ${viewMode === 'list' ? 'list-view' : ''}" style="margin-top: 15px;">
         `;
         outOfColor.forEach(item => {
-            html += createCardHTML(item);
+            html += renderCardByMode(item);
         });
         html += `
                     </div>
@@ -235,6 +248,10 @@ export function renderFilteredResults(synergies) {
     }
 
     return html;
+}
+
+function renderCardByMode(item) {
+    return viewMode === 'list' ? createListItemHTML(item) : createCardHTML(item);
 }
 
 /**
@@ -259,17 +276,98 @@ export function createCardHTML(item) {
     else if (typeLine.includes('planeswalker')) mainType = 'Planeswalker';
     else if (typeLine.includes('land')) mainType = 'Tierra';
 
+    const synergyTier = item.score >= 20
+        ? 'high'
+        : item.score >= 5
+            ? 'medium'
+            : item.score >= 0
+                ? 'low'
+                : 'offcolor';
+
+    const tierLabels = {
+        high: 'Alta sinergia',
+        medium: 'Media sinergia',
+        low: 'Sinergia baja',
+        offcolor: 'Fuera de color'
+    };
+
     return `
         <div class="card-item">
             <div class="card-header">
-                <div class="card-info">
+                <div class="card-heading">
+                    <div class="card-name-row">
+                        <div class="card-name">${item.card.name}</div>
+                        ${mainType ? `<span class="card-badge">${mainType}</span>` : ''}
+                    </div>
+                    <div class="card-subtitle">${item.card.type_line}</div>
+                    <div class="card-meta">
+                        ${item.role ? `<span class="meta-chip">Rol: ${item.role}</span>` : ''}
+                        ${item.archetype ? `<span class="meta-chip subtle">Arquetipo ${item.archetype}</span>` : ''}
+                    </div>
+                </div>
+                <div class="score-chip ${synergyTier}">
+                    <span class="score-value">${item.score}</span>
+                    <span class="score-label">${tierLabels[synergyTier]}</span>
+                </div>
+            </div>
+            <div class="card-body">
+                ${reasonsList}
+            </div>
+        </div>
+    `;
+}
+
+function createListItemHTML(item) {
+    const reasonsList = item.reasons.length > 0
+        ? '<ul class="synergy-reasons compact">' + item.reasons.map(r => `<li>${r}</li>`).join('') + '</ul>'
+        : '<p style="color: #7f8c8d;">Sin sinergia específica detectada</p>';
+
+    const typeLine = item.card.type_line.toLowerCase();
+    let mainType = '';
+    if (typeLine.includes('creature')) mainType = 'Criatura';
+    else if (typeLine.includes('instant')) mainType = 'Instantáneo';
+    else if (typeLine.includes('sorcery')) mainType = 'Conjuro';
+    else if (typeLine.includes('artifact')) mainType = 'Artefacto';
+    else if (typeLine.includes('enchantment')) mainType = 'Encantamiento';
+    else if (typeLine.includes('planeswalker')) mainType = 'Planeswalker';
+    else if (typeLine.includes('land')) mainType = 'Tierra';
+
+    const synergyTier = item.score >= 20
+        ? 'high'
+        : item.score >= 5
+            ? 'medium'
+            : item.score >= 0
+                ? 'low'
+                : 'offcolor';
+
+    const tierLabels = {
+        high: 'Alta sinergia',
+        medium: 'Media sinergia',
+        low: 'Sinergia baja',
+        offcolor: 'Fuera de color'
+    };
+
+    return `
+        <div class="card-item list-item">
+            <div class="list-item-main">
+                <div class="card-name-row">
                     <div class="card-name">${item.card.name}</div>
-                    <div class="card-type">${item.card.type_line}</div>
                     ${mainType ? `<span class="card-badge">${mainType}</span>` : ''}
                 </div>
-                <span class="synergy-score">Puntaje: ${item.score}</span>
+                <div class="card-subtitle">${item.card.type_line}</div>
+                <div class="card-meta">
+                    ${item.role ? `<span class="meta-chip">Rol: ${item.role}</span>` : ''}
+                    ${item.archetype ? `<span class="meta-chip subtle">Arquetipo ${item.archetype}</span>` : ''}
+                    <span class="meta-chip subtle">Puntaje ${item.score}</span>
+                </div>
+                <div class="card-body">${reasonsList}</div>
             </div>
-            ${reasonsList}
+            <div class="list-item-score">
+                <div class="score-chip ${synergyTier}">
+                    <span class="score-value">${item.score}</span>
+                    <span class="score-label">${tierLabels[synergyTier]}</span>
+                </div>
+            </div>
         </div>
     `;
 }
@@ -324,6 +422,17 @@ export function getCardTypes(synergies) {
         .sort((a, b) => b.count - a.count);
 }
 
+function getFilteredSynergies() {
+    if (activeTypeFilter === 'all') {
+        return allSynergies;
+    }
+
+    return allSynergies.filter(item => {
+        const typeLine = item.card.type_line.toLowerCase();
+        return typeLine.includes(activeTypeFilter);
+    });
+}
+
 /**
  * Filter results by card type
  *
@@ -335,14 +444,7 @@ export function filterByType(type, event) {
 
     logger.debug('Filtering by type:', type);
 
-    let filtered = allSynergies;
-
-    if (type !== 'all') {
-        filtered = allSynergies.filter(item => {
-            const typeLine = item.card.type_line.toLowerCase();
-            return typeLine.includes(type);
-        });
-    }
+    const filtered = getFilteredSynergies();
 
     logger.info('Filtered results:', filtered.length, 'cards');
 
@@ -367,6 +469,24 @@ export function filterByType(type, event) {
     if (event && event.target) {
         event.target.classList.add('active');
     }
+}
+
+export function toggleViewMode(view, event) {
+    if (viewMode === view) return;
+    viewMode = view;
+    localStorage.setItem('synergyViewMode', viewMode);
+
+    const filtered = getFilteredSynergies();
+
+    const filteredDiv = document.getElementById('filteredResults');
+    if (filteredDiv) {
+        filteredDiv.innerHTML = renderFilteredResults(filtered);
+    }
+
+    // Ensure buttons reflect the current state even if event bubbling hits inner elements
+    document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === viewMode);
+    });
 }
 
 /**
