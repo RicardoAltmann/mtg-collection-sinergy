@@ -4,7 +4,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
-import { HttpsProxyAgent } from 'https-proxy-agent';
+import { ProxyAgent, setGlobalDispatcher } from 'undici';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
@@ -28,10 +28,11 @@ const USE_SUPABASE = !!supabase;
 // Configure proxy agent if proxy is set in environment
 const PROXY_URL = process.env.https_proxy || process.env.HTTPS_PROXY ||
                   process.env.http_proxy || process.env.HTTP_PROXY;
-const proxyAgent = PROXY_URL ? new HttpsProxyAgent(PROXY_URL) : null;
+const proxyAgent = PROXY_URL ? new ProxyAgent(PROXY_URL) : null;
 
 if (proxyAgent) {
     console.log('Using proxy for external requests:', PROXY_URL.replace(/:[^:@]+@/, ':***@'));
+    setGlobalDispatcher(proxyAgent);
 }
 
 // Middleware
@@ -104,8 +105,9 @@ const MIN_REQUEST_INTERVAL = 100; // 100ms between requests
 // Fallback to curl when Node.js fetch fails due to proxy issues
 async function curlFetch(url) {
     try {
+        const proxyFlag = PROXY_URL ? `-x "${PROXY_URL}"` : '';
         const { stdout, stderr } = await execAsync(
-            `curl -s -w "\\nHTTP_STATUS:%{http_code}" -H "User-Agent: MTG-Collection-Synergy/2.0" "${url}"`
+            `curl -s ${proxyFlag} -w "\\nHTTP_STATUS:%{http_code}" -H "User-Agent: MTG-Collection-Synergy/2.0" "${url}"`
         );
 
         const parts = stdout.split('\nHTTP_STATUS:');
@@ -149,7 +151,7 @@ async function resilientFetch(url, options = {}, retryCount = 0) {
 
         // Add proxy agent for HTTPS requests if configured
         if (proxyAgent && url.startsWith('https://')) {
-            fetchOptions.agent = proxyAgent;
+            fetchOptions.dispatcher = proxyAgent;
         }
 
         const response = await fetch(url, fetchOptions);
