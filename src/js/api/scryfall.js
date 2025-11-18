@@ -81,29 +81,55 @@ export async function fetchCardsBatch(cardNames) {
  *
  * @async
  * @param {string} query - Search query (minimum 2 characters)
+ * @param {boolean} commandersOnly - If true, only fetch legal commanders (legendary creatures or planeswalkers with "can be your commander")
  * @returns {Promise<string[]>} Array of card name suggestions
  * @throws {Error} If the autocomplete request fails
  *
  * @example
  * const suggestions = await fetchAutocompleteSuggestions("light");
  * // Returns: ["Lightning Bolt", "Light Up the Stage", ...]
+ *
+ * @example
+ * const commanders = await fetchAutocompleteSuggestions("atraxa", true);
+ * // Returns only legal commanders: ["Atraxa, Praetors' Voice", "Atraxa, Grand Unifier"]
  */
-export async function fetchAutocompleteSuggestions(query) {
-    logger.debug('Fetching autocomplete suggestions:', query);
+export async function fetchAutocompleteSuggestions(query, commandersOnly = false) {
+    logger.debug('Fetching autocomplete suggestions:', query, 'commandersOnly:', commandersOnly);
 
-    const response = await fetch(
-        `https://api.scryfall.com/cards/autocomplete?q=${encodeURIComponent(query)}`
-    );
+    let url;
+    if (commandersOnly) {
+        // Use Scryfall search API to filter only legal commanders
+        // is:commander filters for cards legal as commanders (legendary creatures and specific planeswalkers)
+        url = `https://api.scryfall.com/cards/search?q=is:commander+${encodeURIComponent(query)}&unique=cards&order=name`;
+    } else {
+        // Use regular autocomplete for all cards
+        url = `https://api.scryfall.com/cards/autocomplete?q=${encodeURIComponent(query)}`;
+    }
+
+    const response = await fetch(url);
 
     if (!response.ok) {
+        // For search API, 404 means no results found (not an error)
+        if (commandersOnly && response.status === 404) {
+            logger.debug('No commander suggestions found');
+            return [];
+        }
         logger.error('Autocomplete fetch failed');
         throw new Error('Error fetching suggestions');
     }
 
     const data = await response.json();
-    logger.debug('Autocomplete suggestions received:', data.data?.length || 0);
 
-    return data.data || [];
+    if (commandersOnly) {
+        // Extract card names from search results
+        const suggestions = data.data?.map(card => card.name) || [];
+        logger.debug('Commander suggestions received:', suggestions.length);
+        return suggestions.slice(0, 10); // Limit to 10 suggestions
+    } else {
+        // Regular autocomplete returns array of names directly
+        logger.debug('Autocomplete suggestions received:', data.data?.length || 0);
+        return data.data || [];
+    }
 }
 
 /**
