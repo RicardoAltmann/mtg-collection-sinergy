@@ -306,7 +306,8 @@ async function fetchCommanderSuggestions(query) {
 
     try {
         logger.debug('Fetching commander autocomplete suggestions for:', query);
-        const suggestions = await fetchAutocompleteSuggestions(query);
+        // Pass true to filter only legal commanders
+        const suggestions = await fetchAutocompleteSuggestions(query, true);
 
         commanderInput.classList.remove('loading');
 
