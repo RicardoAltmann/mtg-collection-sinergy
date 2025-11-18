@@ -7,10 +7,13 @@
 import { logger } from '../utils/logger.js';
 import { fetchAutocompleteSuggestions, fetchCommanderAutocompleteSuggestions } from '../api/scryfall.js';
 
-// Autocomplete state
-let autocompleteTimeout;
-let selectedSuggestionIndex = -1;
-let currentSuggestions = [];
+// Store autocomplete instances
+const autocompleteInstances = new Map();
+
+// Commander autocomplete state
+let commanderAutocompleteTimeout;
+let selectedCommanderIndex = -1;
+let commanderSuggestions = [];
 
 // Commander autocomplete state
 let commanderAutocompleteTimeout;
@@ -18,121 +21,194 @@ let selectedCommanderIndex = -1;
 let commanderSuggestions = [];
 
 /**
- * Handle input event on autocomplete field
+ * Create an autocomplete instance for a specific input
+ *
+ * @param {string} inputId - ID of the input element
+ * @param {string} dropdownId - ID of the dropdown element
+ * @param {Function} onSelect - Optional callback when a suggestion is selected
+ * @returns {Object} Autocomplete instance methods
+ */
+export function createAutocomplete(inputId, dropdownId, onSelect = null) {
+    const state = {
+        timeout: null,
+        selectedIndex: -1,
+        suggestions: []
+    };
+
+    const handleInput = (e) => {
+        const query = e.target.value.trim();
+        const input = document.getElementById(inputId);
+
+        // Clear previous timeout
+        clearTimeout(state.timeout);
+
+        if (query.length < 2) {
+            hideDropdown();
+            return;
+        }
+
+        // Show loading state
+        input.classList.add('loading');
+
+        // Debounce API calls - wait 300ms after user stops typing
+        state.timeout = setTimeout(() => {
+            fetchSuggestions(query);
+        }, 300);
+    };
+
+    const fetchSuggestions = async (query) => {
+        const input = document.getElementById(inputId);
+
+        try {
+            logger.debug(`Fetching autocomplete suggestions for ${inputId}:`, query);
+            const suggestions = await fetchAutocompleteSuggestions(query);
+
+            input.classList.remove('loading');
+
+            if (suggestions && suggestions.length > 0) {
+                state.suggestions = suggestions;
+                displaySuggestions(suggestions);
+            } else {
+                showNoResults();
+            }
+        } catch (error) {
+            logger.error('Autocomplete error:', error);
+            input.classList.remove('loading');
+            hideDropdown();
+        }
+    };
+
+    const displaySuggestions = (suggestions) => {
+        const dropdown = document.getElementById(dropdownId);
+        state.selectedIndex = -1;
+
+        let html = '';
+        suggestions.forEach((cardName, index) => {
+            const escapedName = cardName.replace(/'/g, "\\'");
+            const instanceKey = `${inputId}_${dropdownId}`;
+            html += `
+                <div class="autocomplete-item" data-index="${index}" onclick="window.selectAutocompleteItem('${instanceKey}', '${escapedName}')">
+                    <div class="autocomplete-item-name">${cardName}</div>
+                </div>
+            `;
+        });
+
+        dropdown.innerHTML = html;
+        dropdown.classList.remove('hidden');
+        logger.debug(`Displayed autocomplete suggestions for ${inputId}:`, suggestions.length);
+    };
+
+    const handleKeydown = (e) => {
+        const dropdown = document.getElementById(dropdownId);
+        const items = dropdown.querySelectorAll('.autocomplete-item');
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            state.selectedIndex = Math.min(state.selectedIndex + 1, items.length - 1);
+            updateSelectedItem(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            state.selectedIndex = Math.max(state.selectedIndex - 1, -1);
+            updateSelectedItem(items);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (state.selectedIndex >= 0 && state.selectedIndex < state.suggestions.length) {
+                selectItem(state.suggestions[state.selectedIndex]);
+            }
+        } else if (e.key === 'Escape') {
+            hideDropdown();
+        }
+    };
+
+    const selectItem = (cardName) => {
+        const input = document.getElementById(inputId);
+        input.value = cardName;
+        hideDropdown();
+        logger.debug(`Selected suggestion for ${inputId}:`, cardName);
+
+        if (onSelect) {
+            onSelect(cardName);
+        }
+    };
+
+    const showNoResults = () => {
+        const dropdown = document.getElementById(dropdownId);
+        dropdown.innerHTML = '<div class="autocomplete-no-results">No se encontraron cartas</div>';
+        dropdown.classList.remove('hidden');
+    };
+
+    const hideDropdown = () => {
+        const dropdown = document.getElementById(dropdownId);
+        dropdown.classList.add('hidden');
+        dropdown.innerHTML = '';
+        state.selectedIndex = -1;
+        state.suggestions = [];
+    };
+
+    const updateSelectedItem = (items) => {
+        items.forEach((item, index) => {
+            if (index === state.selectedIndex) {
+                item.classList.add('selected');
+                item.scrollIntoView({ block: 'nearest' });
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+    };
+
+    return {
+        handleInput,
+        handleKeydown,
+        selectItem,
+        hideDropdown,
+        state
+    };
+}
+
+/**
+ * Legacy function for backward compatibility - handles card add autocomplete input
  *
  * @param {Event} e - Input event
  */
 export function handleAutocompleteInput(e) {
-    const query = e.target.value.trim();
-
-    // Clear previous timeout
-    clearTimeout(autocompleteTimeout);
-
-    if (query.length < 2) {
-        hideAutocompleteDropdown();
-        return;
-    }
-
-    // Show loading state
-    const autocompleteInput = document.getElementById('autocompleteInput');
-    autocompleteInput.classList.add('loading');
-
-    // Debounce API calls - wait 300ms after user stops typing
-    autocompleteTimeout = setTimeout(() => {
-        fetchSuggestions(query);
-    }, 300);
-}
-
-/**
- * Fetch and display autocomplete suggestions
- *
- * @async
- * @param {string} query - Search query
- */
-async function fetchSuggestions(query) {
-    const autocompleteInput = document.getElementById('autocompleteInput');
-
-    try {
-        logger.debug('Fetching autocomplete suggestions for:', query);
-        const suggestions = await fetchAutocompleteSuggestions(query);
-
-        autocompleteInput.classList.remove('loading');
-
-        if (suggestions && suggestions.length > 0) {
-            currentSuggestions = suggestions;
-            displayAutocompleteSuggestions(suggestions);
-        } else {
-            showNoResults();
-        }
-    } catch (error) {
-        logger.error('Autocomplete error:', error);
-        autocompleteInput.classList.remove('loading');
-        hideAutocompleteDropdown();
+    const instance = autocompleteInstances.get('autocompleteInput_autocompleteDropdown');
+    if (instance) {
+        instance.handleInput(e);
     }
 }
 
 /**
- * Display autocomplete suggestions in the dropdown
+ * Legacy function for backward compatibility - displays suggestions
  *
  * @param {string[]} suggestions - Array of card name suggestions
  */
 export function displayAutocompleteSuggestions(suggestions) {
-    const autocompleteDropdown = document.getElementById('autocompleteDropdown');
-    selectedSuggestionIndex = -1;
-
-    let html = '';
-    suggestions.forEach((cardName, index) => {
-        html += `
-            <div class="autocomplete-item" data-index="${index}" onclick="window.selectSuggestionFromAutocomplete('${cardName.replace(/'/g, "\\'")}')">
-                <div class="autocomplete-item-name">${cardName}</div>
-            </div>
-        `;
-    });
-
-    autocompleteDropdown.innerHTML = html;
-    autocompleteDropdown.classList.remove('hidden');
-    logger.debug('Displayed autocomplete suggestions:', suggestions.length);
+    // This is now handled by the instance
+    logger.debug('displayAutocompleteSuggestions called (legacy)');
 }
 
 /**
- * Handle keyboard navigation in autocomplete dropdown
+ * Legacy function for backward compatibility - handles keydown
  *
  * @param {KeyboardEvent} e - Keyboard event
  */
 export function handleAutocompleteKeydown(e) {
-    const autocompleteDropdown = document.getElementById('autocompleteDropdown');
-    const items = autocompleteDropdown.querySelectorAll('.autocomplete-item');
-
-    if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, items.length - 1);
-        updateSelectedSuggestion(items);
-    } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, -1);
-        updateSelectedSuggestion(items);
-    } else if (e.key === 'Enter') {
-        e.preventDefault();
-        if (selectedSuggestionIndex >= 0 && selectedSuggestionIndex < currentSuggestions.length) {
-            selectSuggestion(currentSuggestions[selectedSuggestionIndex]);
-        } else {
-            addCardFromAutocomplete();
-        }
-    } else if (e.key === 'Escape') {
-        hideAutocompleteDropdown();
+    const instance = autocompleteInstances.get('autocompleteInput_autocompleteDropdown');
+    if (instance) {
+        instance.handleKeydown(e);
     }
 }
 
 /**
- * Select a suggestion from the dropdown
+ * Legacy function for backward compatibility - selects a suggestion
  *
  * @param {string} cardName - Name of the selected card
  */
 export function selectSuggestion(cardName) {
-    const autocompleteInput = document.getElementById('autocompleteInput');
-    autocompleteInput.value = cardName;
-    hideAutocompleteDropdown();
-    logger.debug('Selected suggestion:', cardName);
+    const instance = autocompleteInstances.get('autocompleteInput_autocompleteDropdown');
+    if (instance) {
+        instance.selectItem(cardName);
+    }
 }
 
 /**
@@ -178,33 +254,170 @@ export async function addCardFromAutocomplete() {
 }
 
 /**
- * Show "no results" message in autocomplete dropdown
- */
-export function showNoResults() {
-    const autocompleteDropdown = document.getElementById('autocompleteDropdown');
-    autocompleteDropdown.innerHTML = '<div class="autocomplete-no-results">No se encontraron cartas</div>';
-    autocompleteDropdown.classList.remove('hidden');
-}
-
-/**
- * Hide the autocomplete dropdown
+ * Legacy function for backward compatibility - hides dropdown
  */
 export function hideAutocompleteDropdown() {
-    const autocompleteDropdown = document.getElementById('autocompleteDropdown');
-    autocompleteDropdown.classList.add('hidden');
-    autocompleteDropdown.innerHTML = '';
-    selectedSuggestionIndex = -1;
-    currentSuggestions = [];
+    const instance = autocompleteInstances.get('autocompleteInput_autocompleteDropdown');
+    if (instance) {
+        instance.hideDropdown();
+    }
 }
 
 /**
- * Update the selected suggestion visual state
+ * Global function to select an autocomplete item (called from onclick)
+ *
+ * @param {string} instanceKey - Key identifying the autocomplete instance
+ * @param {string} cardName - Name of the selected card
+ */
+export function selectAutocompleteItem(instanceKey, cardName) {
+    const instance = autocompleteInstances.get(instanceKey);
+    if (instance) {
+        instance.selectItem(cardName);
+    }
+}
+
+/** Commander Autocomplete **/
+
+/**
+ * Handle input event on commander field
+ *
+ * @param {Event} e - Input event
+ */
+export function handleCommanderAutocompleteInput(e) {
+    const query = e.target.value.trim();
+
+    clearTimeout(commanderAutocompleteTimeout);
+
+    if (query.length < 2) {
+        hideCommanderAutocompleteDropdown();
+        return;
+    }
+
+    const commanderInput = document.getElementById('commander');
+    commanderInput.classList.add('loading');
+
+    commanderAutocompleteTimeout = setTimeout(() => {
+        fetchCommanderSuggestions(query);
+    }, 300);
+}
+
+/**
+ * Fetch and display commander autocomplete suggestions
+ *
+ * @param {string} query - Search query
+ */
+async function fetchCommanderSuggestions(query) {
+    const commanderInput = document.getElementById('commander');
+
+    try {
+        logger.debug('Fetching commander autocomplete suggestions for:', query);
+        const suggestions = await fetchAutocompleteSuggestions(query);
+
+        commanderInput.classList.remove('loading');
+
+        if (suggestions && suggestions.length > 0) {
+            commanderSuggestions = suggestions;
+            displayCommanderSuggestions(suggestions);
+        } else {
+            showCommanderNoResults();
+        }
+    } catch (error) {
+        logger.error('Commander autocomplete error:', error);
+        commanderInput.classList.remove('loading');
+        hideCommanderAutocompleteDropdown();
+    }
+}
+
+/**
+ * Display commander autocomplete suggestions
+ *
+ * @param {string[]} suggestions - Array of commander name suggestions
+ */
+export function displayCommanderSuggestions(suggestions) {
+    const dropdown = document.getElementById('commanderAutocompleteDropdown');
+    selectedCommanderIndex = -1;
+
+    let html = '';
+    suggestions.forEach((commanderName, index) => {
+        html += `
+            <div class="autocomplete-item" data-index="${index}" onclick="window.selectCommanderSuggestionFromAutocomplete('${commanderName.replace(/'/g, "\\'")}')">
+                <div class="autocomplete-item-name">${commanderName}</div>
+            </div>
+        `;
+    });
+
+    dropdown.innerHTML = html;
+    dropdown.classList.remove('hidden');
+    logger.debug('Displayed commander autocomplete suggestions:', suggestions.length);
+}
+
+/**
+ * Handle keyboard navigation for commander autocomplete
+ *
+ * @param {KeyboardEvent} e - Keyboard event
+ */
+export function handleCommanderAutocompleteKeydown(e) {
+    const dropdown = document.getElementById('commanderAutocompleteDropdown');
+    const items = dropdown.querySelectorAll('.autocomplete-item');
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedCommanderIndex = Math.min(selectedCommanderIndex + 1, items.length - 1);
+        updateSelectedCommander(items);
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedCommanderIndex = Math.max(selectedCommanderIndex - 1, -1);
+        updateSelectedCommander(items);
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (selectedCommanderIndex >= 0 && selectedCommanderIndex < commanderSuggestions.length) {
+            selectCommanderSuggestion(commanderSuggestions[selectedCommanderIndex]);
+        }
+    } else if (e.key === 'Escape') {
+        hideCommanderAutocompleteDropdown();
+    }
+}
+
+/**
+ * Select a commander suggestion
+ *
+ * @param {string} commanderName - Selected commander name
+ */
+export function selectCommanderSuggestion(commanderName) {
+    const commanderInput = document.getElementById('commander');
+    commanderInput.value = commanderName;
+    hideCommanderAutocompleteDropdown();
+    logger.debug('Selected commander suggestion:', commanderName);
+}
+
+/**
+ * Show no results message for commander search
+ */
+export function showCommanderNoResults() {
+    const dropdown = document.getElementById('commanderAutocompleteDropdown');
+    dropdown.innerHTML = '<div class="autocomplete-no-results">No se encontraron commanders</div>';
+    dropdown.classList.remove('hidden');
+}
+
+/**
+ * Hide commander autocomplete dropdown
+ */
+export function hideCommanderAutocompleteDropdown() {
+    const dropdown = document.getElementById('commanderAutocompleteDropdown');
+    dropdown.classList.add('hidden');
+    dropdown.innerHTML = '';
+    selectedCommanderIndex = -1;
+    commanderSuggestions = [];
+}
+
+/**
+ * Update selected commander suggestion visual state
  *
  * @param {NodeList} items - List of autocomplete item elements
  */
-export function updateSelectedSuggestion(items) {
+export function updateSelectedCommander(items) {
     items.forEach((item, index) => {
-        if (index === selectedSuggestionIndex) {
+        if (index === selectedCommanderIndex) {
             item.classList.add('selected');
             item.scrollIntoView({ block: 'nearest' });
         } else {
@@ -382,28 +595,70 @@ export function initCommanderAutocomplete() {
 }
 
 /**
+ * Initialize commander autocomplete listeners
+ */
+export function initCommanderAutocomplete() {
+    const commanderInput = document.getElementById('commander');
+    const commanderDropdown = document.getElementById('commanderAutocompleteDropdown');
+
+    if (!commanderInput || !commanderDropdown) {
+        logger.warn('Commander autocomplete elements not found');
+        return;
+    }
+
+    commanderInput.addEventListener('input', handleCommanderAutocompleteInput);
+    commanderInput.addEventListener('keydown', handleCommanderAutocompleteKeydown);
+
+    logger.info('Commander autocomplete initialized');
+}
+
+/**
  * Initialize autocomplete event listeners
  */
 export function initAutocomplete() {
+    // Initialize card add autocomplete
     const autocompleteInput = document.getElementById('autocompleteInput');
     const autocompleteDropdown = document.getElementById('autocompleteDropdown');
 
-    if (!autocompleteInput || !autocompleteDropdown) {
-        logger.warn('Autocomplete elements not found');
+    if (autocompleteInput && autocompleteDropdown) {
+        const cardAddInstance = createAutocomplete('autocompleteInput', 'autocompleteDropdown');
+        autocompleteInstances.set('autocompleteInput_autocompleteDropdown', cardAddInstance);
+
+        autocompleteInput.addEventListener('input', cardAddInstance.handleInput);
+        autocompleteInput.addEventListener('keydown', cardAddInstance.handleKeydown);
+
+        logger.info('Card add autocomplete initialized');
     } else {
-        autocompleteInput.addEventListener('input', handleAutocompleteInput);
-        autocompleteInput.addEventListener('keydown', handleAutocompleteKeydown);
+        logger.warn('Card add autocomplete elements not found');
     }
 
-    initCommanderAutocomplete();
+    // Initialize commander autocomplete
+    const commanderInput = document.getElementById('commander');
+    const commanderDropdown = document.getElementById('commanderAutocompleteDropdown');
 
-    // Close dropdown when clicking outside
+    if (commanderInput && commanderDropdown) {
+        const commanderInstance = createAutocomplete('commander', 'commanderAutocompleteDropdown');
+        autocompleteInstances.set('commander_commanderAutocompleteDropdown', commanderInstance);
+
+        commanderInput.addEventListener('input', commanderInstance.handleInput);
+        commanderInput.addEventListener('keydown', commanderInstance.handleKeydown);
+
+        logger.info('Commander autocomplete initialized');
+    } else {
+        logger.warn('Commander autocomplete elements not found');
+    }
+
+    // Close dropdowns when clicking outside any autocomplete container
     document.addEventListener('click', function(e) {
         if (!e.target.closest('.autocomplete-container')) {
-            hideAutocompleteDropdown();
-            hideCommanderAutocompleteDropdown();
+            autocompleteInstances.forEach(instance => {
+                instance.hideDropdown();
+            });
         }
     });
 
-    logger.info('Autocomplete initialized');
+    // Make selectAutocompleteItem globally accessible
+    window.selectAutocompleteItem = selectAutocompleteItem;
+
+    logger.info('Autocomplete initialization complete');
 }
