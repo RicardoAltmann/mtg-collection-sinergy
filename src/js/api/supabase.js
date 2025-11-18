@@ -12,6 +12,7 @@ let sessionToken = null;
 let SUPABASE_URL = null;
 let SUPABASE_ANON_KEY = null;
 let USE_AUTH = false;
+let authReadyCallback = null;
 
 /**
  * Initialize authentication system
@@ -59,6 +60,11 @@ export async function initAuth() {
             showAuthForms();
         }
     });
+
+    // Notify that auth is ready
+    if (authReadyCallback) {
+        authReadyCallback();
+    }
 }
 
 /**
@@ -141,4 +147,13 @@ export function getAuthConfig() {
         SUPABASE_ANON_KEY,
         USE_AUTH
     };
+}
+
+/**
+ * Register a callback to be called when auth is ready
+ *
+ * @param {Function} callback - Function to call when auth is initialized
+ */
+export function onAuthReady(callback) {
+    authReadyCallback = callback;
 }

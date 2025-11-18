@@ -106,7 +106,18 @@ export async function addCards() {
 
     } catch (error) {
         logger.error('Error adding cards:', error);
-        resultsDiv.innerHTML = `<div class="error">Error al agregar cartas: ${error.message}</div>`;
+
+        // Check for authentication errors
+        if (error.message.includes('401') || error.message.includes('Unauthorized') || error.message.includes('Authentication')) {
+            resultsDiv.innerHTML = `
+                <div class="error">
+                    <strong>Error de autenticación</strong><br>
+                    Tu sesión puede haber expirado. Por favor, recarga la página e inicia sesión nuevamente.
+                </div>
+            `;
+        } else {
+            resultsDiv.innerHTML = `<div class="error">Error al agregar cartas: ${error.message}</div>`;
+        }
     } finally {
         if (addBtn) addBtn.disabled = false;
     }

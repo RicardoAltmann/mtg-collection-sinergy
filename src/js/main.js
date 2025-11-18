@@ -11,7 +11,8 @@ import {
     initAuth,
     setAuthConfig,
     setSupabaseClient,
-    isAuthEnabled
+    isAuthEnabled,
+    onAuthReady
 } from './api/supabase.js';
 import { loadCollection } from './api/collection.js';
 
@@ -62,6 +63,33 @@ import {
 logger.setLevel(LogLevel.INFO);
 
 /**
+ * Enable or disable action buttons
+ * @param {boolean} enabled - Whether to enable the buttons
+ */
+function setActionButtonsEnabled(enabled) {
+    const buttonIds = [
+        'addBtn',
+        'addCardFromAutocompleteBtn',
+        'analyzeBtn',
+        'clearCollectionBtn'
+    ];
+
+    buttonIds.forEach(id => {
+        const button = document.getElementById(id);
+        if (button) {
+            button.disabled = !enabled;
+            if (!enabled) {
+                button.title = 'Cargando autenticación...';
+            } else {
+                button.title = '';
+            }
+        }
+    });
+
+    logger.info('Action buttons', enabled ? 'enabled' : 'disabled');
+}
+
+/**
  * Initialize the application
  * Fetches configuration and sets up Supabase if enabled
  */
@@ -80,6 +108,13 @@ async function initializeApp() {
 
         if (config.useAuth) {
             logger.info('Authentication enabled, loading Supabase...');
+
+            // Register callback to enable buttons when auth is ready
+            onAuthReady(() => {
+                logger.info('Auth initialization complete, enabling action buttons');
+                setActionButtonsEnabled(true);
+            });
+
             // Import Supabase from CDN
             import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm').then(module => {
                 const { createClient } = module;
@@ -89,14 +124,20 @@ async function initializeApp() {
             }).catch(error => {
                 logger.error('Error loading Supabase:', error);
                 showDemoModeMessage('Error al cargar autenticación. Por favor recarga la página.');
+                // Enable buttons even on error so user can try again
+                setActionButtonsEnabled(true);
             });
         } else {
             logger.info('No authentication configured, showing demo mode');
             showDemoModeMessage();
+            // Enable buttons in demo mode
+            setActionButtonsEnabled(true);
         }
     } catch (error) {
         logger.error('Error fetching config:', error);
         showDemoModeMessage('Error al cargar configuración. Usando modo demo.');
+        // Enable buttons even on error
+        setActionButtonsEnabled(true);
     }
 }
 
@@ -155,6 +196,9 @@ function setupGlobalFunctions() {
 function initEventListeners() {
     window.addEventListener('DOMContentLoaded', () => {
         logger.info('DOM loaded, setting up event listeners...');
+
+        // Disable action buttons until auth is ready
+        setActionButtonsEnabled(false);
 
         // Initialize notifications system
         initNotifications();
