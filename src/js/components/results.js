@@ -575,3 +575,38 @@ export function handleCardFeedback(cardName, signal) {
         statusEl.textContent = formatFeedbackStatus(cardName);
     }
 }
+
+/**
+ * Clear all analysis results
+ * Resets the results display and clears saved analysis from localStorage
+ */
+export function clearAnalysis() {
+    logger.info('Clearing analysis results');
+
+    // Clear internal state
+    allSynergies = [];
+    activeTypeFilter = 'all';
+    commanderData = null;
+
+    // Clear the results display
+    const resultsDiv = document.getElementById('results');
+    if (resultsDiv) {
+        resultsDiv.innerHTML = '';
+    }
+
+    // Clear saved analysis from localStorage
+    try {
+        localStorage.removeItem('lastAnalysis');
+        logger.info('Saved analysis cleared from localStorage');
+    } catch (error) {
+        logger.error('Error clearing localStorage:', error);
+    }
+
+    // Clear commander input
+    const commanderInput = document.getElementById('commander');
+    if (commanderInput) {
+        commanderInput.value = '';
+    }
+
+    logger.info('Analysis cleared successfully');
+}
