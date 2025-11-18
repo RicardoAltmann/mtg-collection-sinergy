@@ -380,19 +380,22 @@ async function loadCollection(supabaseClient, userId) {
     return result.cards;
 }
 
+// Save collection - Only used for local file mode (backward compatibility)
 async function saveCollection(supabaseClient, userId, collection) {
+    // In Supabase mode, this function should not be called
+    // Use addCardToCollection/removeCardFromCollection instead
     if (USE_SUPABASE && supabaseClient && userId) {
-        // Clear existing and insert new
-        await supabaseClient.from('cards').delete().eq('user_id', userId);
+        console.warn('saveCollection called in Supabase mode - use individual add/remove functions instead');
+        // Clear user_collections for this user
+        const { error } = await supabaseClient
+            .from('user_collections')
+            .delete()
+            .eq('user_id', userId);
+        if (error) throw error;
 
-        if (collection.length > 0) {
-            const rows = collection.map(card => ({
-                user_id: userId,
-                card_data: card
-            }));
-
-            const { error } = await supabaseClient.from('cards').insert(rows);
-            if (error) throw error;
+        // Add each card using the normalized approach
+        for (const card of collection) {
+            await addCardToCollection(supabaseClient, userId, card);
         }
     } else {
         await fs.writeFile(COLLECTION_FILE, JSON.stringify(collection, null, 2));
