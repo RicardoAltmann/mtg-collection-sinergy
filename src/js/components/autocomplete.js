@@ -26,9 +26,10 @@ let commanderSuggestions = [];
  * @param {string} inputId - ID of the input element
  * @param {string} dropdownId - ID of the dropdown element
  * @param {Function} onSelect - Optional callback when a suggestion is selected
+ * @param {boolean} commandersOnly - If true, only fetch legal commanders
  * @returns {Object} Autocomplete instance methods
  */
-export function createAutocomplete(inputId, dropdownId, onSelect = null) {
+export function createAutocomplete(inputId, dropdownId, onSelect = null, commandersOnly = false) {
     const state = {
         timeout: null,
         selectedIndex: -1,
@@ -61,7 +62,7 @@ export function createAutocomplete(inputId, dropdownId, onSelect = null) {
 
         try {
             logger.debug(`Fetching autocomplete suggestions for ${inputId}:`, query);
-            const suggestions = await fetchAutocompleteSuggestions(query);
+            const suggestions = await fetchAutocompleteSuggestions(query, commandersOnly);
 
             input.classList.remove('loading');
 
@@ -638,7 +639,7 @@ export function initAutocomplete() {
     const commanderDropdown = document.getElementById('commanderAutocompleteDropdown');
 
     if (commanderInput && commanderDropdown) {
-        const commanderInstance = createAutocomplete('commander', 'commanderAutocompleteDropdown');
+        const commanderInstance = createAutocomplete('commander', 'commanderAutocompleteDropdown', null, true);
         autocompleteInstances.set('commander_commanderAutocompleteDropdown', commanderInstance);
 
         commanderInput.addEventListener('input', commanderInstance.handleInput);
