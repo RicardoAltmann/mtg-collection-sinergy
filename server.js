@@ -4,6 +4,11 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
+import { HttpsProxyAgent } from 'https-proxy-agent';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,6 +24,15 @@ const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY
     : null;
 
 const USE_SUPABASE = !!supabase;
+
+// Configure proxy agent if proxy is set in environment
+const PROXY_URL = process.env.https_proxy || process.env.HTTPS_PROXY ||
+                  process.env.http_proxy || process.env.HTTP_PROXY;
+const proxyAgent = PROXY_URL ? new HttpsProxyAgent(PROXY_URL) : null;
+
+if (proxyAgent) {
+    console.log('Using proxy for external requests:', PROXY_URL.replace(/:[^:@]+@/, ':***@'));
+}
 
 // Middleware
 app.use(cors());
@@ -87,6 +101,29 @@ async function requireAuth(req, res, next) {
 let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL = 100; // 100ms between requests
 
+// Fallback to curl when Node.js fetch fails due to proxy issues
+async function curlFetch(url) {
+    try {
+        const { stdout, stderr } = await execAsync(
+            `curl -s -w "\\nHTTP_STATUS:%{http_code}" -H "User-Agent: MTG-Collection-Synergy/2.0" "${url}"`
+        );
+
+        const parts = stdout.split('\nHTTP_STATUS:');
+        const body = parts[0];
+        const status = parseInt(parts[1] || '0');
+
+        return {
+            ok: status >= 200 && status < 300,
+            status,
+            json: async () => JSON.parse(body),
+            text: async () => body
+        };
+    } catch (error) {
+        console.error('curl fallback failed:', error.message);
+        throw error;
+    }
+}
+
 // Resilient fetch with timeout and retry logic
 const FETCH_TIMEOUT = 10000; // 10 seconds
 const MAX_RETRIES = 3;
@@ -103,12 +140,27 @@ async function resilientFetch(url, options = {}, retryCount = 0) {
             ...(options.headers || {})
         };
 
-        const response = await fetch(url, {
+        // Configure fetch options with proxy agent if available
+        const fetchOptions = {
             ...options,
             headers,
             signal: controller.signal
-        });
+        };
+
+        // Add proxy agent for HTTPS requests if configured
+        if (proxyAgent && url.startsWith('https://')) {
+            fetchOptions.agent = proxyAgent;
+        }
+
+        const response = await fetch(url, fetchOptions);
         clearTimeout(timeoutId);
+
+        // If we get a 403 and proxy is configured, try curl as fallback
+        if (response.status === 403 && proxyAgent) {
+            console.log('Got 403 with fetch, trying curl fallback for:', url);
+            return await curlFetch(url);
+        }
+
         return response;
     } catch (error) {
         clearTimeout(timeoutId);
@@ -123,6 +175,16 @@ async function resilientFetch(url, options = {}, retryCount = 0) {
             console.warn(`Fetch failed for ${url}, retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`);
             await new Promise(resolve => setTimeout(resolve, delay));
             return resilientFetch(url, options, retryCount + 1);
+        }
+
+        // Try curl as last resort if proxy is configured
+        if (proxyAgent && url.startsWith('https://')) {
+            console.log('Fetch completely failed, trying curl fallback for:', url);
+            try {
+                return await curlFetch(url);
+            } catch (curlError) {
+                console.error('Curl fallback also failed:', curlError.message);
+            }
         }
 
         // Re-throw if not retriable or out of retries

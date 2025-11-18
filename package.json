@@ -13,15 +13,25 @@
     "admin:make-first": "node scripts/make-first-admin.js",
     "restore:collection": "node scripts/restore-collection.js"
   },
-  "keywords": ["mtg", "magic", "commander", "synergy", "edh", "deck-building"],
+  "keywords": [
+    "mtg",
+    "magic",
+    "commander",
+    "synergy",
+    "edh",
+    "deck-building"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@supabase/supabase-js": "^2.81.1",
+    "axios": "^1.13.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
-    "node-fetch": "^3.3.2"
+    "https-proxy-agent": "^7.0.6",
+    "node-fetch": "^3.3.2",
+    "undici": "^7.16.0"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^2.1.0",
