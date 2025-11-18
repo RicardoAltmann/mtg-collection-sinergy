@@ -38,8 +38,7 @@ import {
 import {
     initAutocomplete,
     selectSuggestion,
-    addCardFromAutocomplete,
-    selectCommanderSuggestion
+    addCardFromAutocomplete
 } from './components/autocomplete.js';
 import {
     initFileImport,
@@ -142,7 +141,6 @@ function setupGlobalFunctions() {
     // Autocomplete functions
     window.selectSuggestionFromAutocomplete = selectSuggestion;
     window.addCardFromAutocomplete = addCardFromAutocomplete;
-    window.selectCommanderSuggestionFromAutocomplete = selectCommanderSuggestion;
 
     // File import functions
     window.handleFileSelect = handleFileSelect;
