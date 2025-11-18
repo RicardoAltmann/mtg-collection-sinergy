@@ -907,11 +907,12 @@ app.post('/api/collection', requireAuth, async (req, res) => {
                     // CRITICAL: Update in-memory collection to prevent duplicates in same request
                     collection.push(data);
                 } else {
-                    errors.push(cardName);
+                    const errorText = response.status === 404 ? 'Carta no encontrada' : `Error HTTP ${response.status}`;
+                    errors.push({ card: cardName, error: errorText });
                 }
             } catch (error) {
                 console.error(`Error fetching card ${cardName}:`, error);
-                errors.push(cardName);
+                errors.push({ card: cardName, error: 'Error de conexión' });
             }
         }
 
