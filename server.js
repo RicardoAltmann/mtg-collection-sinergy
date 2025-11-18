@@ -422,6 +422,30 @@ function optimizeCardData(fullCardData) {
     };
 }
 
+async function findMasterCardByName(supabaseClient, cardName) {
+    if (!USE_SUPABASE || !supabaseClient) return null;
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('master_cards')
+            .select('card_data')
+            .ilike('name', cardName)
+            .maybeSingle();
+
+        if (error) {
+            if (error.code !== 'PGRST116') {
+                console.error('Error querying master_cards cache:', error);
+            }
+            return null;
+        }
+
+        return data?.card_data || null;
+    } catch (error) {
+        console.error('Error reading master_cards cache:', error);
+        return null;
+    }
+}
+
 async function addCardToCollection(supabaseClient, userId, cardData) {
     if (USE_SUPABASE && supabaseClient && userId) {
         try {
@@ -967,6 +991,16 @@ app.post('/api/collection', requireAuth, async (req, res) => {
             }
 
             try {
+                // First try the master_cards cache to avoid hitting Scryfall
+                const cachedCard = await findMasterCardByName(req.supabaseClient, cardName);
+
+                if (cachedCard) {
+                    await addCardToCollection(req.supabaseClient, req.user?.id, cachedCard);
+                    results.push(cachedCard.name);
+                    collection.push(cachedCard); // keep in-memory collection in sync
+                    continue;
+                }
+
                 const response = await rateLimitedFetch(
                     `${SCRYFALL_API}/cards/named?fuzzy=${encodeURIComponent(cardName)}`
                 );
