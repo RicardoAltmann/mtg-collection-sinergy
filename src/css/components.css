@@ -1769,6 +1769,348 @@ button:disabled {
     color: #27ae60;
 }
 
+/* ===================================
+   ADMIN MODAL STYLES
+   =================================== */
+
+.admin-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.admin-modal {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    width: 90%;
+    max-width: 900px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-lg);
+    animation: slideUp 0.3s ease-out;
+}
+
+.admin-modal-header {
+    padding: var(--space-lg);
+    border-bottom: 1px solid var(--glass-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.admin-modal-header h3 {
+    margin: 0;
+    font-size: var(--font-size-xl);
+    color: var(--text-primary);
+}
+
+.admin-modal-close {
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    color: var(--text-muted);
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all var(--transition-fast);
+    padding: 0;
+}
+
+.admin-modal-close:hover {
+    background: rgba(231, 76, 60, 0.1);
+    border-color: var(--color-error);
+    color: var(--color-error);
+}
+
+.admin-modal-body {
+    padding: var(--space-lg);
+    overflow-y: auto;
+    flex: 1;
+}
+
+.admin-modal-footer {
+    padding: var(--space-lg);
+    border-top: 1px solid var(--glass-border);
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-sm);
+    flex-shrink: 0;
+}
+
+/* Collection Modal Specific */
+.collection-modal-toolbar {
+    display: flex;
+    gap: var(--space-md);
+    margin-bottom: var(--space-lg);
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.collection-modal-toolbar input {
+    flex: 1;
+    min-width: 200px;
+}
+
+.collection-modal-stats {
+    display: flex;
+    gap: var(--space-lg);
+    padding: var(--space-md);
+    background: var(--color-bg-tertiary);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-lg);
+}
+
+.collection-modal-stat {
+    text-align: center;
+}
+
+.collection-modal-stat-value {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary);
+}
+
+.collection-modal-stat-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+}
+
+.collection-modal-list {
+    display: grid;
+    gap: var(--space-sm);
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.collection-modal-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-sm) var(--space-md);
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+}
+
+.collection-modal-item:hover {
+    border-color: var(--glass-border-accent);
+}
+
+.collection-modal-item-name {
+    font-weight: var(--font-weight-medium);
+    color: var(--text-primary);
+}
+
+.collection-modal-item-type {
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+}
+
+.collection-modal-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--space-md);
+    margin-top: var(--space-lg);
+    padding-top: var(--space-lg);
+    border-top: 1px solid var(--glass-border);
+}
+
+.collection-modal-pagination button {
+    padding: var(--space-sm) var(--space-md);
+}
+
+.collection-modal-pagination span {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+/* Edit Limit Modal Specific */
+.edit-limit-form {
+    display: grid;
+    gap: var(--space-lg);
+}
+
+.edit-limit-current {
+    background: var(--color-bg-tertiary);
+    padding: var(--space-md);
+    border-radius: var(--radius-sm);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.edit-limit-current-label {
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+.edit-limit-current-value {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
+}
+
+.edit-limit-input-group {
+    display: grid;
+    gap: var(--space-sm);
+}
+
+.edit-limit-input-group label {
+    font-weight: var(--font-weight-medium);
+    color: var(--text-secondary);
+}
+
+.edit-limit-input-group input,
+.edit-limit-input-group select {
+    padding: var(--space-sm) var(--space-md);
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+}
+
+.edit-limit-input-group input:focus,
+.edit-limit-input-group select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.edit-limit-presets {
+    display: flex;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+}
+
+.edit-limit-preset {
+    padding: var(--space-xs) var(--space-sm);
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.edit-limit-preset:hover {
+    border-color: var(--color-primary);
+    background: rgba(74, 158, 255, 0.1);
+}
+
+/* Users Filter Bar */
+.users-filter-bar {
+    display: flex;
+    gap: var(--space-md);
+    margin-bottom: var(--space-lg);
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.users-filter-bar .input-group {
+    flex: 1;
+    min-width: 200px;
+    margin: 0;
+}
+
+.users-filter-bar select {
+    padding: var(--space-sm) var(--space-md);
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    min-width: 150px;
+}
+
+.users-filter-bar select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+/* Pagination Controls */
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--space-md);
+    margin-top: var(--space-lg);
+    padding-top: var(--space-lg);
+    border-top: 1px solid var(--glass-border);
+}
+
+.pagination-controls button {
+    padding: var(--space-sm) var(--space-md);
+}
+
+.pagination-controls button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination-info {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+/* Secondary Button Style */
+.btn-secondary {
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
+}
+
+.btn-secondary:hover {
+    background: var(--color-bg-secondary);
+    border-color: var(--glass-border-accent);
+}
+
+/* Export Button */
+.btn-export {
+    background: rgba(52, 152, 219, 0.2);
+    border: 1px solid rgba(52, 152, 219, 0.5);
+    color: #3498db;
+}
+
+.btn-export:hover {
+    background: rgba(52, 152, 219, 0.3);
+    border-color: #3498db;
+}
+
+/* Action confirmation styles */
+.action-confirm {
+    background: rgba(243, 156, 18, 0.1);
+    border: 1px solid rgba(243, 156, 18, 0.3);
+    padding: var(--space-md);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-lg);
+}
+
+.action-confirm p {
+    margin: 0 0 var(--space-sm) 0;
+    color: var(--text-primary);
+}
+
+.action-confirm strong {
+    color: #f39c12;
+}
+
 /* Utility Classes - Must be last to override other styles */
 .hidden {
     display: none !important;

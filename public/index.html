@@ -247,6 +247,7 @@
                     <div class="admin-subtabs">
                         <button class="admin-subtab-btn active" data-subtab="stats">Estadísticas</button>
                         <button class="admin-subtab-btn" data-subtab="users">Usuarios</button>
+                        <button class="admin-subtab-btn" data-subtab="history">Historial</button>
                     </div>
 
                     <div id="adminStatsSubtab" class="admin-subtab-content active">
@@ -255,6 +256,10 @@
 
                     <div id="adminUsersSubtab" class="admin-subtab-content">
                         <div class="loading">Cargando usuarios...</div>
+                    </div>
+
+                    <div id="adminHistorySubtab" class="admin-subtab-content">
+                        <div class="loading">Cargando historial...</div>
                     </div>
                 </div>
             </div>
@@ -318,6 +323,86 @@
 
             <div class="modal-footer">
                 <button type="button" id="closeOnboardingBtn">¡Empecemos! 🚀</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Modals -->
+    <!-- View User Collection Modal -->
+    <div id="viewCollectionModal" class="admin-modal-overlay hidden">
+        <div class="admin-modal">
+            <div class="admin-modal-header">
+                <h3>Colección de <span id="collectionModalUserEmail"></span></h3>
+                <button class="admin-modal-close" onclick="closeCollectionModal()">&times;</button>
+            </div>
+            <div class="admin-modal-body">
+                <div class="collection-modal-stats" id="collectionModalStats">
+                    <!-- Stats loaded dynamically -->
+                </div>
+                <div class="collection-modal-toolbar">
+                    <input type="text" id="collectionModalSearch" placeholder="Buscar cartas...">
+                    <button class="btn-export" onclick="exportUserCollection()">📥 Exportar CSV</button>
+                </div>
+                <div id="collectionModalList" class="collection-modal-list">
+                    <!-- Cards loaded dynamically -->
+                </div>
+                <div id="collectionModalPagination" class="collection-modal-pagination">
+                    <!-- Pagination loaded dynamically -->
+                </div>
+            </div>
+            <div class="admin-modal-footer">
+                <button class="btn-secondary" onclick="closeCollectionModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit User Limit Modal -->
+    <div id="editLimitModal" class="admin-modal-overlay hidden">
+        <div class="admin-modal" style="max-width: 500px;">
+            <div class="admin-modal-header">
+                <h3>Editar Límite de Cartas</h3>
+                <button class="admin-modal-close" onclick="closeEditLimitModal()">&times;</button>
+            </div>
+            <div class="admin-modal-body">
+                <div class="edit-limit-form">
+                    <div class="action-confirm">
+                        <p>Usuario: <strong id="editLimitUserEmail"></strong></p>
+                    </div>
+
+                    <div class="edit-limit-current">
+                        <span class="edit-limit-current-label">Límite actual</span>
+                        <span class="edit-limit-current-value" id="editLimitCurrentValue">500</span>
+                    </div>
+
+                    <div class="edit-limit-input-group">
+                        <label for="editLimitNewValue">Nuevo límite (1 - 50,000)</label>
+                        <input type="number" id="editLimitNewValue" min="1" max="50000" value="500">
+                        <div class="edit-limit-presets">
+                            <button type="button" class="edit-limit-preset" onclick="setLimitPreset(500)">500</button>
+                            <button type="button" class="edit-limit-preset" onclick="setLimitPreset(1000)">1,000</button>
+                            <button type="button" class="edit-limit-preset" onclick="setLimitPreset(2500)">2,500</button>
+                            <button type="button" class="edit-limit-preset" onclick="setLimitPreset(5000)">5,000</button>
+                            <button type="button" class="edit-limit-preset" onclick="setLimitPreset(10000)">10,000</button>
+                        </div>
+                    </div>
+
+                    <div class="edit-limit-input-group">
+                        <label for="editLimitReason">Razón del límite personalizado</label>
+                        <select id="editLimitReasonPreset" onchange="updateReasonFromPreset()">
+                            <option value="">Seleccionar razón...</option>
+                            <option value="Usuario Premium">Usuario Premium</option>
+                            <option value="Beta Tester">Beta Tester</option>
+                            <option value="Coleccionista Activo">Coleccionista Activo</option>
+                            <option value="Solicitud del usuario">Solicitud del usuario</option>
+                            <option value="custom">Otra razón...</option>
+                        </select>
+                        <input type="text" id="editLimitReasonCustom" placeholder="Razón personalizada..." style="display: none;">
+                    </div>
+                </div>
+            </div>
+            <div class="admin-modal-footer">
+                <button class="btn-secondary" onclick="closeEditLimitModal()">Cancelar</button>
+                <button onclick="saveUserLimit()">Guardar Cambios</button>
             </div>
         </div>
     </div>

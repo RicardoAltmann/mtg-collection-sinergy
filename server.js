@@ -749,6 +749,38 @@ async function updateUserLimit(supabaseClient, targetUserId, newLimit, reason = 
     return data;
 }
 
+// Log admin actions for audit trail
+async function logAdminAction(supabaseClient, action, targetUserId = null, details = null) {
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+
+        await supabaseClient
+            .from('admin_audit_log')
+            .insert({
+                admin_user_id: user.id,
+                action,
+                target_user_id: targetUserId,
+                details
+            });
+    } catch (error) {
+        // Don't fail the main operation if logging fails
+        console.error('Failed to log admin action:', error.message);
+    }
+}
+
+// Get audit logs
+async function getAuditLogs(supabaseClient, limit = 100, offset = 0) {
+    const { data, error, count } = await supabaseClient
+        .from('admin_audit_log')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+    return { logs: data, total: count };
+}
+
 // API Routes
 
 // Get configuration (Supabase credentials)
@@ -1228,6 +1260,9 @@ app.post('/api/admin/grant', requireAdmin, async (req, res) => {
             throw error;
         }
 
+        // Log the action
+        await logAdminAction(client, 'GRANT_ADMIN', userId, { granted_to: userId });
+
         res.json({ message: 'Admin privileges granted successfully' });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -1252,6 +1287,9 @@ app.delete('/api/admin/revoke/:userId', requireAdmin, async (req, res) => {
             .eq('user_id', userId);
 
         if (error) throw error;
+
+        // Log the action
+        await logAdminAction(client, 'REVOKE_ADMIN', userId, { revoked_from: userId });
 
         res.json({ message: 'Admin privileges revoked successfully' });
     } catch (error) {
@@ -1328,6 +1366,12 @@ app.put('/api/admin/users/:userId/limit', requireAdmin, async (req, res) => {
             reason || null
         );
 
+        // Log the action
+        await logAdminAction(req.supabaseClient, 'UPDATE_LIMIT', userId, {
+            new_limit: max_cards,
+            reason: reason || null
+        });
+
         res.json({
             message: 'User limit updated successfully',
             limit: updated
@@ -1335,6 +1379,39 @@ app.put('/api/admin/users/:userId/limit', requireAdmin, async (req, res) => {
     } catch (error) {
         console.error('Error updating user limit:', error);
         res.status(500).json({ error: 'Failed to update user limit' });
+    }
+});
+
+// Get audit logs (admin only)
+app.get('/api/admin/audit-logs', requireAdmin, async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 100;
+        const offset = parseInt(req.query.offset) || 0;
+
+        const { logs, total } = await getAuditLogs(req.supabaseClient, limit, offset);
+
+        // Enrich logs with user emails
+        const { data: users } = await req.supabaseClient.auth.admin.listUsers();
+        const userMap = {};
+        users?.users?.forEach(u => {
+            userMap[u.id] = u.email;
+        });
+
+        const enrichedLogs = logs.map(log => ({
+            ...log,
+            admin_email: userMap[log.admin_user_id] || 'Unknown',
+            target_email: log.target_user_id ? (userMap[log.target_user_id] || 'Unknown') : null
+        }));
+
+        res.json({
+            logs: enrichedLogs,
+            total,
+            limit,
+            offset
+        });
+    } catch (error) {
+        console.error('Error fetching audit logs:', error);
+        res.status(500).json({ error: 'Failed to fetch audit logs' });
     }
 });
 
