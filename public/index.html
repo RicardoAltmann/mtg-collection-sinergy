@@ -102,9 +102,20 @@
         <div id="analyzeTab" class="tab-content active">
             <div class="input-section">
                 <div class="input-group">
-                    <label for="commander">Commander (nombre exacto):</label>
-                    <input type="text" id="commander" placeholder="Ej: Atraxa, Praetors' Voice">
-                    <p class="help-text">Escribe el nombre exacto del commander en inglés</p>
+                    <label for="commander">Commander:</label>
+                    <p style="color: #95a5a6; margin-bottom: 10px; font-size: 0.95em;">
+                        Escribe el nombre de tu commander y obtén sugerencias en tiempo real
+                    </p>
+                    <div class="autocomplete-container">
+                        <input
+                            type="text"
+                            id="commander"
+                            class="autocomplete-input"
+                            placeholder="Ej: Atraxa, Praetors' Voice"
+                            autocomplete="off"
+                        >
+                        <div id="commanderAutocompleteDropdown" class="autocomplete-dropdown hidden"></div>
+                    </div>
                 </div>
 
                 <div style="display: flex; gap: 10px;">
