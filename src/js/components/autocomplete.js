@@ -5,10 +5,15 @@
  */
 
 import { logger } from '../utils/logger.js';
-import { fetchAutocompleteSuggestions } from '../api/scryfall.js';
+import { fetchAutocompleteSuggestions, fetchCommanderAutocompleteSuggestions } from '../api/scryfall.js';
 
 // Store autocomplete instances
 const autocompleteInstances = new Map();
+
+// Commander autocomplete state
+let commanderAutocompleteTimeout;
+let selectedCommanderIndex = -1;
+let commanderSuggestions = [];
 
 // Commander autocomplete state
 let commanderAutocompleteTimeout;
@@ -419,6 +424,174 @@ export function updateSelectedCommander(items) {
             item.classList.remove('selected');
         }
     });
+}
+
+/** Commander Autocomplete **/
+
+/**
+ * Handle input event on commander field
+ *
+ * @param {Event} e - Input event
+ */
+export function handleCommanderAutocompleteInput(e) {
+    const query = e.target.value.trim();
+
+    clearTimeout(commanderAutocompleteTimeout);
+
+    if (query.length < 2) {
+        hideCommanderAutocompleteDropdown();
+        return;
+    }
+
+    const commanderInput = document.getElementById('commander');
+    commanderInput.classList.add('loading');
+
+    commanderAutocompleteTimeout = setTimeout(() => {
+        fetchCommanderSuggestions(query);
+    }, 300);
+}
+
+/**
+ * Fetch and display commander autocomplete suggestions
+ *
+ * @param {string} query - Search query
+ */
+async function fetchCommanderSuggestions(query) {
+    const commanderInput = document.getElementById('commander');
+
+    try {
+        logger.debug('Fetching commander autocomplete suggestions for:', query);
+        const suggestions = await fetchCommanderAutocompleteSuggestions(query);
+
+        commanderInput.classList.remove('loading');
+
+        if (suggestions && suggestions.length > 0) {
+            commanderSuggestions = suggestions;
+            displayCommanderSuggestions(suggestions);
+        } else {
+            showCommanderNoResults();
+        }
+    } catch (error) {
+        logger.error('Commander autocomplete error:', error);
+        commanderInput.classList.remove('loading');
+        hideCommanderAutocompleteDropdown();
+    }
+}
+
+/**
+ * Display commander autocomplete suggestions
+ *
+ * @param {string[]} suggestions - Array of commander name suggestions
+ */
+export function displayCommanderSuggestions(suggestions) {
+    const dropdown = document.getElementById('commanderAutocompleteDropdown');
+    selectedCommanderIndex = -1;
+
+    let html = '';
+    suggestions.forEach((commanderName, index) => {
+        html += `
+            <div class="autocomplete-item" data-index="${index}" onclick="window.selectCommanderSuggestionFromAutocomplete('${commanderName.replace(/'/g, "\\'")}')">
+                <div class="autocomplete-item-name">${commanderName}</div>
+            </div>
+        `;
+    });
+
+    dropdown.innerHTML = html;
+    dropdown.classList.remove('hidden');
+    logger.debug('Displayed commander autocomplete suggestions:', suggestions.length);
+}
+
+/**
+ * Handle keyboard navigation for commander autocomplete
+ *
+ * @param {KeyboardEvent} e - Keyboard event
+ */
+export function handleCommanderAutocompleteKeydown(e) {
+    const dropdown = document.getElementById('commanderAutocompleteDropdown');
+    const items = dropdown.querySelectorAll('.autocomplete-item');
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedCommanderIndex = Math.min(selectedCommanderIndex + 1, items.length - 1);
+        updateSelectedCommander(items);
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedCommanderIndex = Math.max(selectedCommanderIndex - 1, -1);
+        updateSelectedCommander(items);
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (selectedCommanderIndex >= 0 && selectedCommanderIndex < commanderSuggestions.length) {
+            selectCommanderSuggestion(commanderSuggestions[selectedCommanderIndex]);
+        }
+    } else if (e.key === 'Escape') {
+        hideCommanderAutocompleteDropdown();
+    }
+}
+
+/**
+ * Select a commander suggestion
+ *
+ * @param {string} commanderName - Selected commander name
+ */
+export function selectCommanderSuggestion(commanderName) {
+    const commanderInput = document.getElementById('commander');
+    commanderInput.value = commanderName;
+    hideCommanderAutocompleteDropdown();
+    logger.debug('Selected commander suggestion:', commanderName);
+}
+
+/**
+ * Show no results message for commander search
+ */
+export function showCommanderNoResults() {
+    const dropdown = document.getElementById('commanderAutocompleteDropdown');
+    dropdown.innerHTML = '<div class="autocomplete-no-results">No se encontraron commanders</div>';
+    dropdown.classList.remove('hidden');
+}
+
+/**
+ * Hide commander autocomplete dropdown
+ */
+export function hideCommanderAutocompleteDropdown() {
+    const dropdown = document.getElementById('commanderAutocompleteDropdown');
+    dropdown.classList.add('hidden');
+    dropdown.innerHTML = '';
+    selectedCommanderIndex = -1;
+    commanderSuggestions = [];
+}
+
+/**
+ * Update selected commander suggestion visual state
+ *
+ * @param {NodeList} items - List of autocomplete item elements
+ */
+export function updateSelectedCommander(items) {
+    items.forEach((item, index) => {
+        if (index === selectedCommanderIndex) {
+            item.classList.add('selected');
+            item.scrollIntoView({ block: 'nearest' });
+        } else {
+            item.classList.remove('selected');
+        }
+    });
+}
+
+/**
+ * Initialize commander autocomplete listeners
+ */
+export function initCommanderAutocomplete() {
+    const commanderInput = document.getElementById('commander');
+    const commanderDropdown = document.getElementById('commanderAutocompleteDropdown');
+
+    if (!commanderInput || !commanderDropdown) {
+        logger.warn('Commander autocomplete elements not found');
+        return;
+    }
+
+    commanderInput.addEventListener('input', handleCommanderAutocompleteInput);
+    commanderInput.addEventListener('keydown', handleCommanderAutocompleteKeydown);
+
+    logger.info('Commander autocomplete initialized');
 }
 
 /**
