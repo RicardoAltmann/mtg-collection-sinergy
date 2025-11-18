@@ -97,8 +97,15 @@ async function resilientFetch(url, options = {}, retryCount = 0) {
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
 
     try {
+        // Add User-Agent header for Scryfall API requests
+        const headers = {
+            'User-Agent': 'MTG-Collection-Synergy/2.0 (https://github.com/RicardoAltmann/mtg-collection-sinergy)',
+            ...(options.headers || {})
+        };
+
         const response = await fetch(url, {
             ...options,
+            headers,
             signal: controller.signal
         });
         clearTimeout(timeoutId);
@@ -907,12 +914,24 @@ app.post('/api/collection', requireAuth, async (req, res) => {
                     // CRITICAL: Update in-memory collection to prevent duplicates in same request
                     collection.push(data);
                 } else {
-                    const errorText = response.status === 404 ? 'Carta no encontrada' : `Error HTTP ${response.status}`;
+                    let errorText;
+                    if (response.status === 404) {
+                        errorText = 'Carta no encontrada';
+                    } else if (response.status === 403) {
+                        errorText = 'Acceso denegado por Scryfall API';
+                    } else if (response.status === 429) {
+                        errorText = 'Límite de peticiones excedido';
+                    } else {
+                        errorText = `Error HTTP ${response.status}`;
+                    }
                     errors.push({ card: cardName, error: errorText });
                 }
             } catch (error) {
                 console.error(`Error fetching card ${cardName}:`, error);
-                errors.push({ card: cardName, error: 'Error de conexión' });
+                const errorMessage = error.name === 'AbortError'
+                    ? 'Tiempo de espera agotado'
+                    : 'Error de conexión';
+                errors.push({ card: cardName, error: errorMessage });
             }
         }
 
