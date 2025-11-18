@@ -45,6 +45,16 @@ SUPABASE_ANON_KEY=tu-clave-anonima
 npm install
 ```
 
+## Precargar las 10 000 cartas más usadas
+
+Para minimizar las llamadas a Scryfall, puedes poblar `master_cards` con las cartas mejor rankeadas en EDHRec usando la clave de servicio de Supabase (requiere `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`).
+
+```bash
+SUPABASE_SERVICE_ROLE_KEY=tu-clave-de-servicio npm run seed:master
+```
+
+El script descarga el bulk `default_cards` de Scryfall, selecciona las 10 000 con mejor `edhrec_rank` y las inserta por lotes en `master_cards`.
+
 ## Uso
 
 1. Inicia el servidor:

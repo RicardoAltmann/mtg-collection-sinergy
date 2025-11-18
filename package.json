@@ -11,7 +11,8 @@
     "test:coverage": "vitest run --coverage",
     "verify:env": "node verify-env.js",
     "admin:make-first": "node scripts/make-first-admin.js",
-    "restore:collection": "node scripts/restore-collection.js"
+    "restore:collection": "node scripts/restore-collection.js",
+    "seed:master": "node scripts/seed-master-cards.js"
   },
   "keywords": [
     "mtg",
