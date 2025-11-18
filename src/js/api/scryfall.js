@@ -131,3 +131,54 @@ export async function fetchAutocompleteSuggestions(query, commandersOnly = false
         return data.data || [];
     }
 }
+
+/**
+ * Fetch commander-specific autocomplete suggestions
+ * Ensures only valid commander cards are returned
+ *
+ * @async
+ * @param {string} query - Search query (minimum 2 characters)
+ * @returns {Promise<string[]>} Array of commander name suggestions
+ */
+export async function fetchCommanderAutocompleteSuggestions(query) {
+    logger.debug('Fetching commander autocomplete suggestions:', query);
+
+    const response = await fetch(
+        `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`${query} is:commander`)}`
+    );
+
+    if (!response.ok) {
+        logger.error('Commander autocomplete fetch failed');
+        throw new Error('Error fetching commander suggestions');
+    }
+
+    const data = await response.json();
+    const validCards = (data.data || []).filter(isValidCommanderCard);
+    const uniqueNames = [];
+
+    validCards.forEach(card => {
+        if (!uniqueNames.includes(card.name)) {
+            uniqueNames.push(card.name);
+        }
+    });
+
+    logger.debug('Commander autocomplete suggestions received:', uniqueNames.length);
+
+    return uniqueNames;
+}
+
+function isValidCommanderCard(card) {
+    const typeLine = (card.type_line || card.card_faces?.[0]?.type_line || '').toLowerCase();
+    const oracleText = (
+        card.oracle_text ||
+        card.card_faces?.map(face => face.oracle_text).join(' ') ||
+        ''
+    ).toLowerCase();
+
+    const isLegendaryCreature = typeLine.includes('legendary creature');
+    const isCommanderPlaneswalker =
+        typeLine.includes('planeswalker') &&
+        (oracleText.includes('can be your commander') || oracleText.includes('puede ser tu comandante'));
+
+    return isLegendaryCreature || isCommanderPlaneswalker;
+}
